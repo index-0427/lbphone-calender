@@ -10,7 +10,7 @@ local function addApp()
         size        = 1024,
         price       = 0,
         ui          = GetCurrentResourceName() .. "/ui/index.html",
-        icon        = "https://cfx-nui-" .. GetCurrentResourceName() .. "/ui/icon.svg",
+        icon        = "https://cfx-nui-" .. GetCurrentResourceName() .. "/ui/icon.svg?v=2",
         fixBlur     = true,
     })
     if not added then
