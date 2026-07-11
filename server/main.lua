@@ -6,6 +6,13 @@ local function isAdmin(src)
     return IsPlayerAceAllowed(src, Config.AdminAce)
 end
 
+local function canAddEvent(player)
+    if Config.CanAddEvent(player.PlayerData) then return true end
+    -- satou_gang のボス = rank 0 (Leader)
+    local gangInfo = exports['satou_gang']:GetPlayerGangInfo(player.PlayerData.citizenid)
+    return gangInfo ~= nil and gangInfo.rank == 0
+end
+
 local function sendResult(src, ok, message)
     TriggerClientEvent("calendar:client:result", src, { ok = ok, message = message })
 end
@@ -21,7 +28,7 @@ local function sendEvents(src)
             TriggerClientEvent("calendar:client:events", src, {
                 events = rows or {},
                 citizenid = player.PlayerData.citizenid,
-                canAdd = admin or Config.CanAddEvent(player.PlayerData),
+                canAdd = admin or canAddEvent(player),
                 isAdmin = admin,
             })
         end
@@ -55,7 +62,7 @@ RegisterNetEvent("calendar:server:addEvent", function(data)
     local src = source
     local player = getPlayer(src)
     if not player then return end
-    if not (isAdmin(src) or Config.CanAddEvent(player.PlayerData)) then
+    if not (isAdmin(src) or canAddEvent(player)) then
         sendResult(src, false, "予定を追加する権限がありません")
         return
     end
