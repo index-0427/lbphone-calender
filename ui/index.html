@@ -25,7 +25,7 @@
                 <div class="day-panel-header">
                     <span id="day-label"></span>
                     <button id="add-btn" class="add-btn" style="display:none">＋</button>
-                    <button id="help-btn" class="add-btn" style="display:none">？</button>
+                    <button id="help-btn" class="add-btn">？</button>
                 </div>
                 <div id="event-list" class="event-list"></div>
             </div>
@@ -295,7 +295,6 @@
             App.canAdd = d.canAdd;
             App.isAdmin = d.isAdmin;
             $("add-btn").style.display = App.canAdd ? "" : "none";
-            $("help-btn").style.display = App.canAdd ? "none" : "";
             renderCalendar();
             renderDay();
         } else if (e.data?.type === "result") {
