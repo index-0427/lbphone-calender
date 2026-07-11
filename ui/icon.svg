@@ -1,16 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="48 48 416 416" width="512" height="512" role="img" aria-labelledby="title desc">
   <title id="title">Calendar App Icon</title>
   <desc id="desc">iOS-style calendar icon with a red header and the date 11.</desc>
   <defs>
     <clipPath id="iconClip">
       <rect x="48" y="48" width="416" height="416" rx="92" ry="92"/>
     </clipPath>
-    <filter id="shadow" x="24" y="32" width="464" height="456" filterUnits="userSpaceOnUse">
-      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000000" flood-opacity="0.18"/>
-    </filter>
   </defs>
 
-  <g filter="url(#shadow)">
+  <g>
     <rect x="48" y="48" width="416" height="416" rx="92" ry="92" fill="#ffffff"/>
     <g clip-path="url(#iconClip)">
       <rect x="48" y="48" width="416" height="132" fill="#e8443a"/>
