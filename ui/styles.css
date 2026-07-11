@@ -104,10 +104,14 @@ body {
 .day-panel-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 8px;
     margin-bottom: 8px;
     font-weight: bold;
     font-size: 0.95rem;
+}
+
+#day-label {
+    margin-right: auto;
 }
 
 .add-btn {
