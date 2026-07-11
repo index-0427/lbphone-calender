@@ -3,7 +3,7 @@ local appIdentifier = "lbphone-calender"
 local function addApp()
     local added, errorMessage = exports["lb-phone"]:AddCustomApp({
         identifier  = appIdentifier,
-        name        = "カレンダー",
+        name        = "イベントカレンダー",
         description = "サーバー共有カレンダー",
         developer   = "SuiMag",
         defaultApp  = true,

@@ -25,6 +25,7 @@
                 <div class="day-panel-header">
                     <span id="day-label"></span>
                     <button id="add-btn" class="add-btn" style="display:none">＋</button>
+                    <button id="help-btn" class="add-btn" style="display:none">？</button>
                 </div>
                 <div id="event-list" class="event-list"></div>
             </div>
@@ -69,6 +70,18 @@
                     <div class="modal-buttons">
                         <button class="btn btn-cancel" id="confirm-cancel">キャンセル</button>
                         <button class="btn btn-delete" id="confirm-delete">削除</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="modal-help" class="modal-overlay">
+                <div class="modal">
+                    <h3>このカレンダーについて</h3>
+                    <p class="detail-line">・これは全員共通のイベントカレンダーだよ</p>
+                    <p class="detail-line">・現在は企業オーナーとギャングボスだけ登録できるよ</p>
+                    <p class="detail-line">・登録したいならこれらの方に相談してね</p>
+                    <div class="modal-buttons">
+                        <button class="btn btn-cancel" id="help-close">閉じる</button>
                     </div>
                 </div>
             </div>
@@ -248,6 +261,8 @@
             renderCalendar();
         });
         $("add-btn").addEventListener("click", () => openForm(null));
+        $("help-btn").addEventListener("click", () => show("modal-help"));
+        $("help-close").addEventListener("click", hideAll);
         $("form-cancel").addEventListener("click", hideAll);
         $("form-save").addEventListener("click", saveForm);
         $("detail-close").addEventListener("click", hideAll);
@@ -280,6 +295,7 @@
             App.canAdd = d.canAdd;
             App.isAdmin = d.isAdmin;
             $("add-btn").style.display = App.canAdd ? "" : "none";
+            $("help-btn").style.display = App.canAdd ? "none" : "";
             renderCalendar();
             renderDay();
         } else if (e.data?.type === "result") {
