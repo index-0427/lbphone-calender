@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="title desc">
+  <title id="title">Calendar App Icon</title>
+  <desc id="desc">iOS-style calendar icon with a red header and the date 11.</desc>
+  <defs>
+    <clipPath id="iconClip">
+      <rect x="48" y="48" width="416" height="416" rx="92" ry="92"/>
+    </clipPath>
+    <filter id="shadow" x="24" y="32" width="464" height="456" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000000" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#shadow)">
+    <rect x="48" y="48" width="416" height="416" rx="92" ry="92" fill="#ffffff"/>
+    <g clip-path="url(#iconClip)">
+      <rect x="48" y="48" width="416" height="132" fill="#e8443a"/>
+      <rect x="48" y="176" width="416" height="1" fill="#d8d8d8" opacity="0.65"/>
+    </g>
+  </g>
+
+  <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-width="18">
+    <path d="M176 78v56"/>
+    <path d="M336 78v56"/>
+  </g>
+  <g fill="#ffffff">
+    <circle cx="176" cy="136" r="14"/>
+    <circle cx="336" cy="136" r="14"/>
+  </g>
+
+  <text
+    x="256"
+    y="356"
+    text-anchor="middle"
+    fill="#e8443a"
+    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    font-size="196"
+    font-weight="700"
+    letter-spacing="-4">11</text>
+</svg>

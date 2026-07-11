@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8" />
+    <title>Calendar</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="frame.css" />
+</head>
+<body>
+    <div id="phone-wrapper">
+        <div class="app" id="content">
+
+            <div class="cal-header">
+                <button id="prev-month" class="nav-btn">‹</button>
+                <div id="month-label"></div>
+                <button id="next-month" class="nav-btn">›</button>
+            </div>
+
+            <div class="weekdays">
+                <span class="sun">日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span class="sat">土</span>
+            </div>
+            <div id="cal-grid" class="cal-grid"></div>
+
+            <div class="day-panel">
+                <div class="day-panel-header">
+                    <span id="day-label"></span>
+                    <button id="add-btn" class="add-btn" style="display:none">＋</button>
+                </div>
+                <div id="event-list" class="event-list"></div>
+            </div>
+
+            <div id="modal-form" class="modal-overlay">
+                <div class="modal">
+                    <h3 id="form-title">予定を追加</h3>
+                    <input id="f-title" type="text" maxlength="100" placeholder="タイトル" />
+                    <input id="f-date" type="date" />
+                    <div class="time-row">
+                        <input id="f-start" type="time" />
+                        <span>〜</span>
+                        <input id="f-end" type="time" />
+                    </div>
+                    <input id="f-location" type="text" maxlength="100" placeholder="場所" />
+                    <textarea id="f-desc" maxlength="1000" placeholder="メモ" rows="3"></textarea>
+                    <div class="modal-buttons">
+                        <button class="btn btn-cancel" id="form-cancel">キャンセル</button>
+                        <button class="btn btn-confirm" id="form-save">保存</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="modal-detail" class="modal-overlay">
+                <div class="modal">
+                    <h3 id="d-title"></h3>
+                    <p id="d-time" class="detail-line"></p>
+                    <p id="d-location" class="detail-line"></p>
+                    <p id="d-author" class="detail-line"></p>
+                    <p id="d-desc" class="detail-desc"></p>
+                    <div class="modal-buttons">
+                        <button class="btn btn-cancel" id="detail-close">閉じる</button>
+                        <button class="btn btn-edit" id="detail-edit" style="display:none">編集</button>
+                        <button class="btn btn-delete" id="detail-delete" style="display:none">削除</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="modal-confirm" class="modal-overlay">
+                <div class="modal">
+                    <h3>この予定を削除する？</h3>
+                    <div class="modal-buttons">
+                        <button class="btn btn-cancel" id="confirm-cancel">キャンセル</button>
+                        <button class="btn btn-delete" id="confirm-delete">削除</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="toast-container" id="toast-container"></div>
+        </div>
+    </div>
+
+    <script src="dev.js"></script>
+    <script>
+    const App = {
+        events: [],
+        citizenid: null,
+        canAdd: false,
+        isAdmin: false,
+        year: 0,
+        month: 0,
+        selected: null,
+        editingId: null,
+        detailEvent: null,
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const pad = (n) => String(n).padStart(2, "0");
+    const dateKey = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`;
+
+    function todayKey() {
+        const t = new Date();
+        return dateKey(t.getFullYear(), t.getMonth(), t.getDate());
+    }
+
+    function eventsOn(key) {
+        return App.events.filter((e) => e.event_date === key);
+    }
+
+    function timeLabel(e) {
+        if (!e.start_time) return "終日";
+        return e.end_time ? `${e.start_time}〜${e.end_time}` : e.start_time;
+    }
+
+    function canManage(e) {
+        return App.isAdmin || e.citizenid === App.citizenid;
+    }
+
+    function renderCalendar() {
+        $("month-label").textContent = `${App.year}年${App.month + 1}月`;
+        const grid = $("cal-grid");
+        grid.innerHTML = "";
+        const first = new Date(App.year, App.month, 1).getDay();
+        const days = new Date(App.year, App.month + 1, 0).getDate();
+        for (let i = 0; i < first; i++) {
+            grid.appendChild(document.createElement("div"));
+        }
+        for (let d = 1; d <= days; d++) {
+            const key = dateKey(App.year, App.month, d);
+            const cell = document.createElement("div");
+            cell.className = "day-cell";
+            if (key === todayKey()) cell.classList.add("today");
+            if (key === App.selected) cell.classList.add("selected");
+            const dow = (first + d - 1) % 7;
+            if (dow === 0) cell.classList.add("sun");
+            if (dow === 6) cell.classList.add("sat");
+            cell.innerHTML = `<span>${d}</span>` + (eventsOn(key).length ? '<i class="dot"></i>' : "");
+            cell.addEventListener("click", () => {
+                App.selected = key;
+                renderCalendar();
+                renderDay();
+            });
+            grid.appendChild(cell);
+        }
+    }
+
+    function renderDay() {
+        const [y, m, d] = App.selected.split("-").map(Number);
+        $("day-label").textContent = `${m}月${d}日の予定`;
+        const list = $("event-list");
+        list.innerHTML = "";
+        const items = eventsOn(App.selected);
+        if (!items.length) {
+            list.innerHTML = '<div class="empty">予定はありません</div>';
+            return;
+        }
+        for (const e of items) {
+            const row = document.createElement("div");
+            row.className = "event-item";
+            row.innerHTML =
+                `<div class="event-time">${timeLabel(e)}</div>` +
+                `<div class="event-body"><div class="event-title">${esc(e.title)}</div>` +
+                `<div class="event-sub">${esc(e.author)}${e.location ? " ・ " + esc(e.location) : ""}</div></div>`;
+            row.addEventListener("click", () => openDetail(e));
+            list.appendChild(row);
+        }
+    }
+
+    function esc(s) {
+        const div = document.createElement("div");
+        div.textContent = s ?? "";
+        return div.innerHTML;
+    }
+
+    function openDetail(e) {
+        App.detailEvent = e;
+        $("d-title").textContent = e.title;
+        $("d-time").textContent = `🕐 ${e.event_date} ${timeLabel(e)}`;
+        $("d-location").textContent = e.location ? `📍 ${e.location}` : "";
+        $("d-location").style.display = e.location ? "" : "none";
+        $("d-author").textContent = `👤 ${e.author}`;
+        $("d-desc").textContent = e.description || "";
+        $("d-desc").style.display = e.description ? "" : "none";
+        $("detail-edit").style.display = canManage(e) ? "" : "none";
+        $("detail-delete").style.display = canManage(e) ? "" : "none";
+        show("modal-detail");
+    }
+
+    function openForm(e) {
+        App.editingId = e ? e.id : null;
+        $("form-title").textContent = e ? "予定を編集" : "予定を追加";
+        $("f-title").value = e ? e.title : "";
+        $("f-date").value = e ? e.event_date : App.selected;
+        $("f-start").value = e ? e.start_time || "" : "";
+        $("f-end").value = e ? e.end_time || "" : "";
+        $("f-location").value = e ? e.location : "";
+        $("f-desc").value = e ? e.description || "" : "";
+        show("modal-form");
+    }
+
+    function show(id) { $(id).classList.add("active"); }
+    function hide(id) { $(id).classList.remove("active"); }
+    function hideAll() { document.querySelectorAll(".modal-overlay").forEach((m) => m.classList.remove("active")); }
+
+    function toast(msg, ok) {
+        const t = document.createElement("div");
+        t.className = "toast" + (ok ? "" : " toast-error");
+        t.textContent = msg;
+        $("toast-container").appendChild(t);
+        setTimeout(() => t.remove(), 2500);
+    }
+
+    function saveForm() {
+        const title = $("f-title").value.trim();
+        const date = $("f-date").value;
+        if (!title || !date) {
+            toast("タイトルと日付は必須です", false);
+            return;
+        }
+        const payload = {
+            title,
+            date,
+            startTime: $("f-start").value || null,
+            endTime: $("f-end").value || null,
+            location: $("f-location").value.trim(),
+            description: $("f-desc").value.trim(),
+        };
+        if (App.editingId) {
+            payload.id = App.editingId;
+            fetchNui("updateEvent", payload);
+        } else {
+            fetchNui("addEvent", payload);
+        }
+        hideAll();
+    }
+
+    function init() {
+        const t = new Date();
+        App.year = t.getFullYear();
+        App.month = t.getMonth();
+        App.selected = todayKey();
+
+        $("prev-month").addEventListener("click", () => {
+            App.month--;
+            if (App.month < 0) { App.month = 11; App.year--; }
+            renderCalendar();
+        });
+        $("next-month").addEventListener("click", () => {
+            App.month++;
+            if (App.month > 11) { App.month = 0; App.year++; }
+            renderCalendar();
+        });
+        $("add-btn").addEventListener("click", () => openForm(null));
+        $("form-cancel").addEventListener("click", hideAll);
+        $("form-save").addEventListener("click", saveForm);
+        $("detail-close").addEventListener("click", hideAll);
+        $("detail-edit").addEventListener("click", () => {
+            hideAll();
+            openForm(App.detailEvent);
+        });
+        $("detail-delete").addEventListener("click", () => {
+            hide("modal-detail");
+            show("modal-confirm");
+        });
+        $("confirm-cancel").addEventListener("click", hideAll);
+        $("confirm-delete").addEventListener("click", () => {
+            fetchNui("deleteEvent", { id: App.detailEvent.id });
+            hideAll();
+        });
+
+        renderCalendar();
+        renderDay();
+        fetchNui("getEvents");
+    }
+
+    window.addEventListener("message", (e) => {
+        if (e.data === "componentsLoaded") {
+            init();
+        } else if (e.data?.type === "events") {
+            const d = e.data.data;
+            App.events = d.events || [];
+            App.citizenid = d.citizenid;
+            App.canAdd = d.canAdd;
+            App.isAdmin = d.isAdmin;
+            $("add-btn").style.display = App.canAdd ? "" : "none";
+            renderCalendar();
+            renderDay();
+        } else if (e.data?.type === "result") {
+            toast(e.data.data.message, e.data.data.ok);
+        }
+    });
+    </script>
+</body>
+</html>
