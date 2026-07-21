@@ -122,10 +122,38 @@
                     <h3 id="form-title">予定を追加</h3>
                     <input id="f-title" type="text" maxlength="100" placeholder="タイトル" />
                     <input id="f-date" type="date" />
-                    <div class="time-row">
-                        <input id="f-start" type="time" />
-                        <span>〜</span>
-                        <input id="f-end" type="time" />
+                    <div class="event-time-picker">
+                        <div class="time-picker-heading">
+                            <span>開催時間</span>
+                            <small>1分単位で選択</small>
+                        </div>
+                        <div class="time-picker-row">
+                            <button id="f-start-open" class="time-select-card" type="button">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                                <span class="time-card-copy">
+                                    <small>開始</small>
+                                    <strong id="f-start-label">終日</strong>
+                                </span>
+                                <span class="time-card-edit">選ぶ</span>
+                            </button>
+                            <span class="time-picker-arrow" aria-hidden="true">→</span>
+                            <button id="f-end-card" class="time-select-card" type="button" disabled>
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                                <span class="time-card-copy">
+                                    <small>終了</small>
+                                    <strong id="f-end-label">終了なし</strong>
+                                </span>
+                                <span class="time-card-edit">選ぶ</span>
+                            </button>
+                        </div>
+                        <input id="f-start" type="hidden" />
+                        <input id="f-end" type="hidden" />
+                        <div class="time-quick-actions" aria-label="開催時間のクイック設定">
+                            <button type="button" data-duration="60">+1時間</button>
+                            <button type="button" data-duration="120">+2時間</button>
+                            <button type="button" data-duration="180">+3時間</button>
+                            <button id="f-time-clear" class="time-clear" type="button">終日</button>
+                        </div>
                     </div>
                     <input id="f-location" type="text" maxlength="100" placeholder="場所" />
                     <textarea id="f-desc" maxlength="1000" placeholder="メモ" rows="3"></textarea>
@@ -169,6 +197,40 @@
                     <div class="modal-buttons">
                         <button class="btn btn-cancel" id="form-cancel">キャンセル</button>
                         <button class="btn btn-confirm" id="form-save">保存</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="modal-time-editor" class="modal-overlay time-editor-overlay">
+                <div class="modal time-editor-modal">
+                    <div class="time-editor-heading">
+                        <span>24時間制</span>
+                        <h3 id="time-editor-title">開始時刻</h3>
+                        <p>時と分を上下にスワイプして選択</p>
+                    </div>
+                    <div class="time-editor-field">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                        <strong id="time-editor-value">20:00</strong>
+                        <button id="time-editor-clear" type="button" aria-label="時刻設定を解除">×</button>
+                    </div>
+                    <div class="time-wheel-labels" aria-hidden="true">
+                        <span>時</span>
+                        <span>分</span>
+                    </div>
+                    <div class="time-wheel-picker">
+                        <div class="time-wheel-column">
+                            <div id="time-hour-wheel" class="time-wheel" role="listbox" aria-label="時"></div>
+                            <strong id="time-hour-selected" class="time-wheel-selected">20</strong>
+                        </div>
+                        <span class="time-wheel-colon" aria-hidden="true">:</span>
+                        <div class="time-wheel-column">
+                            <div id="time-minute-wheel" class="time-wheel" role="listbox" aria-label="分"></div>
+                            <strong id="time-minute-selected" class="time-wheel-selected">00</strong>
+                        </div>
+                    </div>
+                    <div class="modal-buttons">
+                        <button class="btn btn-cancel" id="time-editor-cancel" type="button">キャンセル</button>
+                        <button class="btn btn-confirm" id="time-editor-apply" type="button">決定</button>
                     </div>
                 </div>
             </div>
@@ -234,12 +296,17 @@
         participationPending: false,
         participationPendingEventId: null,
         currentView: "events",
+        timeEditorTarget: null,
+        timeEditorMinutes: 0,
     };
 
     const $ = (id) => document.getElementById(id);
     const pad = (n) => String(n).padStart(2, "0");
     const dateKey = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`;
     const DEFAULT_EVENT_IMAGE = "event-hero.webp";
+    const UPCOMING_FEATURED_LIMIT = 3;
+    const TIME_WHEEL_ITEM_HEIGHT = 40;
+    const TIME_WHEEL_CYCLES = 5;
     const REMINDER_LABELS = new Map([
         [10, "10分前"],
         [30, "30分前"],
@@ -251,6 +318,275 @@
     function todayKey() {
         const t = new Date();
         return dateKey(t.getFullYear(), t.getMonth(), t.getDate());
+    }
+
+    function timeValue(totalMinutes) {
+        const normalized = ((totalMinutes % 1440) + 1440) % 1440;
+        return `${pad(Math.floor(normalized / 60))}:${pad(normalized % 60)}`;
+    }
+
+    function timeToMinutes(value) {
+        const match = String(value || "").match(/^(\d{2}):(\d{2})$/);
+        if (!match) return null;
+        const hour = Number(match[1]);
+        const minute = Number(match[2]);
+        if (hour > 23 || minute > 59) return null;
+        return hour * 60 + minute;
+    }
+
+    function setTimeFieldValue(input, value) {
+        const normalized = String(value || "").slice(0, 5);
+        input.value = timeToMinutes(normalized) === null ? "" : normalized;
+    }
+
+    function updateTimePicker() {
+        const hasStart = !!$("f-start").value;
+        $("f-start-label").textContent = $("f-start").value || "終日";
+        $("f-end-label").textContent = $("f-end").value || "終了なし";
+        $("f-end-card").disabled = !hasStart;
+        $("f-end-card").classList.toggle("disabled", !hasStart);
+        document.querySelectorAll(".time-quick-actions [data-duration]").forEach((button) => {
+            button.disabled = !hasStart;
+        });
+        if (!hasStart) $("f-end").value = "";
+    }
+
+    function setEventDuration(durationMinutes) {
+        const startMinutes = timeToMinutes($("f-start").value);
+        if (startMinutes === null) return;
+        setTimeFieldValue($("f-end"), timeValue(startMinutes + durationMinutes));
+        updateTimePicker();
+    }
+
+    function defaultTimeEditorMinutes(target) {
+        if (target === "end") {
+            const start = timeToMinutes($("f-start").value);
+            if (start !== null) return start + 60;
+        }
+        const now = new Date();
+        return Math.ceil((now.getHours() * 60 + now.getMinutes()) / 15) * 15;
+    }
+
+    function populateTimeWheel(wheel, count) {
+        wheel.dataset.count = String(count);
+        wheel.innerHTML = '<span class="time-wheel-spacer" aria-hidden="true"></span>';
+        for (let cycle = 0; cycle < TIME_WHEEL_CYCLES; cycle++) {
+            for (let value = 0; value < count; value++) {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.dataset.value = String(value);
+                button.dataset.index = String(cycle * count + value);
+                button.textContent = pad(value);
+                button.setAttribute("role", "option");
+                wheel.appendChild(button);
+            }
+        }
+        wheel.insertAdjacentHTML("beforeend", '<span class="time-wheel-spacer" aria-hidden="true"></span>');
+    }
+
+    function timeWheelIndex(wheel) {
+        return Math.max(0, Math.round(wheel.scrollTop / TIME_WHEEL_ITEM_HEIGHT));
+    }
+
+    function timeWheelValue(wheel, count) {
+        return timeWheelIndex(wheel) % count;
+    }
+
+    function middleTimeWheelIndex(count, value) {
+        return Math.floor(TIME_WHEEL_CYCLES / 2) * count + value;
+    }
+
+    function setTimeWheelIndex(wheel, index, behavior = "auto") {
+        wheel.dataset.syncing = "1";
+        wheel.scrollTo({ top: index * TIME_WHEEL_ITEM_HEIGHT, behavior });
+        clearTimeout(wheel.releaseTimer);
+        wheel.releaseTimer = setTimeout(() => {
+            delete wheel.dataset.syncing;
+            updateTimeWheelSelection();
+        }, behavior === "smooth" ? 240 : 20);
+    }
+
+    function setTimeWheelPosition(wheel, value, behavior = "auto") {
+        const count = Number(wheel.dataset.count);
+        setTimeWheelIndex(wheel, middleTimeWheelIndex(count, value), behavior);
+    }
+
+    function updateTimeWheelSelection() {
+        const hour = Math.floor(App.timeEditorMinutes / 60);
+        const minute = App.timeEditorMinutes % 60;
+        [["time-hour-wheel", hour], ["time-minute-wheel", minute]].forEach(([id, selected]) => {
+            const wheel = $(id);
+            const selectedIndex = timeWheelIndex(wheel);
+            wheel.querySelectorAll("[data-value]").forEach((button) => {
+                const active = Number(button.dataset.index) === selectedIndex
+                    && Number(button.dataset.value) === selected;
+                button.classList.toggle("active", active);
+                button.setAttribute("aria-selected", String(active));
+            });
+        });
+    }
+
+    function syncTimeWheels(behavior = "auto") {
+        setTimeWheelPosition($("time-hour-wheel"), Math.floor(App.timeEditorMinutes / 60), behavior);
+        setTimeWheelPosition($("time-minute-wheel"), App.timeEditorMinutes % 60, behavior);
+        requestAnimationFrame(updateTimeWheelSelection);
+    }
+
+    function setTimeEditorPart(part, value) {
+        const hour = Math.floor(App.timeEditorMinutes / 60);
+        const minute = App.timeEditorMinutes % 60;
+        App.timeEditorMinutes = part === "hour" ? value * 60 + minute : hour * 60 + value;
+        renderTimeEditor(false);
+    }
+
+    function settleTimeWheel(wheel, part, count, targetIndex = timeWheelIndex(wheel)) {
+        const maxIndex = TIME_WHEEL_CYCLES * count - 1;
+        const index = Math.max(0, Math.min(maxIndex, targetIndex));
+        const value = index % count;
+        setTimeEditorPart(part, value);
+
+        const nearEdge = index < count || index >= (TIME_WHEEL_CYCLES - 1) * count;
+        if (nearEdge) {
+            setTimeWheelPosition(wheel, value);
+        } else {
+            setTimeWheelIndex(wheel, index, "smooth");
+        }
+    }
+
+    function bindTimeWheel(wheel, part, count) {
+        wheel.addEventListener("scroll", () => {
+            if (wheel.dataset.syncing) return;
+            const value = timeWheelValue(wheel, count);
+            setTimeEditorPart(part, value);
+            clearTimeout(wheel.snapTimer);
+            wheel.snapTimer = setTimeout(() => {
+                if (wheel.dragState) return;
+                settleTimeWheel(wheel, part, count);
+            }, 90);
+        });
+
+        wheel.addEventListener("pointerdown", (event) => {
+            if (!event.isPrimary || event.pointerType === "touch" || event.button !== 0) return;
+            clearTimeout(wheel.releaseTimer);
+            clearTimeout(wheel.snapTimer);
+            delete wheel.dataset.syncing;
+            wheel.dragState = {
+                pointerId: event.pointerId,
+                startY: event.clientY,
+                startScrollTop: wheel.scrollTop,
+                lastY: event.clientY,
+                lastTime: performance.now(),
+                velocity: 0,
+                moved: false,
+            };
+            wheel.classList.add("dragging");
+            wheel.setPointerCapture?.(event.pointerId);
+        });
+
+        wheel.addEventListener("pointermove", (event) => {
+            const drag = wheel.dragState;
+            if (!drag || drag.pointerId !== event.pointerId) return;
+
+            const now = performance.now();
+            const elapsed = Math.max(1, now - drag.lastTime);
+            const scrollDelta = drag.lastY - event.clientY;
+            drag.velocity = drag.velocity * 0.65 + (scrollDelta / elapsed) * 0.35;
+            drag.lastY = event.clientY;
+            drag.lastTime = now;
+            drag.moved ||= Math.abs(event.clientY - drag.startY) > 4;
+            if (!drag.moved) return;
+            wheel.scrollTop = drag.startScrollTop + drag.startY - event.clientY;
+            event.preventDefault();
+        });
+
+        const finishDrag = (event, projectVelocity) => {
+            const drag = wheel.dragState;
+            if (!drag || drag.pointerId !== event.pointerId) return;
+
+            wheel.dragState = null;
+            wheel.classList.remove("dragging");
+            if (wheel.hasPointerCapture?.(event.pointerId)) {
+                wheel.releasePointerCapture(event.pointerId);
+            }
+
+            if (!drag.moved) return;
+            clearTimeout(wheel.snapTimer);
+            wheel.suppressClickUntil = performance.now() + 250;
+            const projectedDistance = projectVelocity
+                ? Math.max(-160, Math.min(160, drag.velocity * 120))
+                : 0;
+            const targetIndex = Math.round((wheel.scrollTop + projectedDistance) / TIME_WHEEL_ITEM_HEIGHT);
+            settleTimeWheel(wheel, part, count, targetIndex);
+        };
+
+        wheel.addEventListener("pointerup", (event) => finishDrag(event, true));
+        wheel.addEventListener("pointercancel", (event) => finishDrag(event, false));
+        wheel.addEventListener("click", (event) => {
+            if (performance.now() < (wheel.suppressClickUntil || 0)) {
+                event.preventDefault();
+                return;
+            }
+            const button = event.target.closest("[data-value]");
+            if (!button) return;
+            const value = Number(button.dataset.value);
+            setTimeEditorPart(part, value);
+            setTimeWheelIndex(wheel, Number(button.dataset.index), "smooth");
+        });
+    }
+
+    function renderTimeEditor(syncWheels = true) {
+        App.timeEditorMinutes = ((App.timeEditorMinutes % 1440) + 1440) % 1440;
+        const value = timeValue(App.timeEditorMinutes);
+        $("time-editor-value").textContent = value;
+        $("time-hour-selected").textContent = pad(Math.floor(App.timeEditorMinutes / 60));
+        $("time-minute-selected").textContent = pad(App.timeEditorMinutes % 60);
+        $("time-editor-title").textContent = App.timeEditorTarget === "end" ? "終了時刻" : "開始時刻";
+        $("time-editor-clear").setAttribute("aria-label", App.timeEditorTarget === "end" ? "終了時刻を設定しない" : "終日にする");
+        updateTimeWheelSelection();
+        if (syncWheels) syncTimeWheels();
+    }
+
+    function openTimeEditor(target) {
+        if (target === "end" && !$("f-start").value) return;
+        App.timeEditorTarget = target;
+        const existing = timeToMinutes($(target === "end" ? "f-end" : "f-start").value);
+        App.timeEditorMinutes = existing === null ? defaultTimeEditorMinutes(target) : existing;
+        renderTimeEditor(false);
+        show("modal-time-editor");
+        requestAnimationFrame(() => syncTimeWheels());
+    }
+
+    function closeTimeEditor() {
+        hide("modal-time-editor");
+        App.timeEditorTarget = null;
+    }
+
+    function applyTimeEditor() {
+        if (App.timeEditorTarget === "start") {
+            const previousStart = timeToMinutes($("f-start").value);
+            const previousEnd = timeToMinutes($("f-end").value);
+            let duration = 60;
+            if (previousStart !== null && previousEnd !== null) {
+                duration = (previousEnd - previousStart + 1440) % 1440 || 60;
+            }
+            setTimeFieldValue($("f-start"), timeValue(App.timeEditorMinutes));
+            setEventDuration(duration);
+        } else if (App.timeEditorTarget === "end") {
+            setTimeFieldValue($("f-end"), timeValue(App.timeEditorMinutes));
+            updateTimePicker();
+        }
+        closeTimeEditor();
+    }
+
+    function clearTimeEditor() {
+        if (App.timeEditorTarget === "start") {
+            $("f-start").value = "";
+            $("f-end").value = "";
+        } else if (App.timeEditorTarget === "end") {
+            $("f-end").value = "";
+        }
+        updateTimePicker();
+        closeTimeEditor();
     }
 
     function eventsOn(key) {
@@ -343,21 +679,31 @@
             .sort((a, b) => (a.start_time || "00:00").localeCompare(b.start_time || "00:00"));
     }
 
-    function featuredEvent() {
-        const selectedEvents = selectedFeaturedEvents();
-        if (selectedEvents.length) {
-            App.featuredIndex = Math.min(App.featuredIndex, selectedEvents.length - 1);
-            return selectedEvents[App.featuredIndex];
-        }
-        App.featuredIndex = 0;
-        const upcoming = [...App.events]
+    function upcomingFeaturedEvents() {
+        return [...App.events]
             .filter((event) => event.event_date >= todayKey())
-            .sort((a, b) => `${a.event_date} ${a.start_time || "00:00"}`.localeCompare(`${b.event_date} ${b.start_time || "00:00"}`));
-        return upcoming[0] || App.events[0] || null;
+            .sort((a, b) => `${a.event_date} ${a.start_time || "00:00"}`.localeCompare(`${b.event_date} ${b.start_time || "00:00"}`))
+            .slice(0, UPCOMING_FEATURED_LIMIT);
+    }
+
+    function featuredEvents() {
+        const selectedEvents = selectedFeaturedEvents();
+        if (selectedEvents.length) return selectedEvents;
+
+        const upcomingEvents = upcomingFeaturedEvents();
+        if (upcomingEvents.length) return upcomingEvents;
+
+        return App.events.length ? [App.events[0]] : [];
+    }
+
+    function featuredEvent() {
+        const items = featuredEvents();
+        App.featuredIndex = Math.min(App.featuredIndex, Math.max(0, items.length - 1));
+        return items[App.featuredIndex] || null;
     }
 
     function renderFeaturedNavigation() {
-        const items = selectedFeaturedEvents();
+        const items = featuredEvents();
         const multiple = items.length > 1;
         const guide = $("featured-swipe-guide");
         const previous = $("featured-prev");
@@ -405,7 +751,7 @@
     }
 
     function changeFeatured(direction) {
-        const items = selectedFeaturedEvents();
+        const items = featuredEvents();
         if (items.length < 2 || App.participationPending) return;
         App.featuredIndex = (App.featuredIndex + direction + items.length) % items.length;
         renderFeatured();
@@ -615,8 +961,9 @@
         $("form-title").textContent = e ? "予定を編集" : "予定を追加";
         $("f-title").value = e ? e.title : "";
         $("f-date").value = e ? e.event_date : App.selected;
-        $("f-start").value = e ? e.start_time || "" : "";
-        $("f-end").value = e ? e.end_time || "" : "";
+        setTimeFieldValue($("f-start"), e ? e.start_time || "" : "");
+        setTimeFieldValue($("f-end"), e ? e.end_time || "" : "");
+        updateTimePicker();
         $("f-location").value = e ? e.location : "";
         $("f-desc").value = e ? e.description || "" : "";
         setFormImage(e ? e.image_url : "");
@@ -683,6 +1030,11 @@
         App.month = t.getMonth();
         App.selected = todayKey();
 
+        populateTimeWheel($("time-hour-wheel"), 24);
+        populateTimeWheel($("time-minute-wheel"), 60);
+        bindTimeWheel($("time-hour-wheel"), "hour", 24);
+        bindTimeWheel($("time-minute-wheel"), "minute", 60);
+
         $("prev-month").addEventListener("click", () => {
             App.month--;
             if (App.month < 0) { App.month = 11; App.year--; }
@@ -700,6 +1052,19 @@
             renderDay();
         });
         $("add-btn").addEventListener("click", () => openForm(null));
+        $("f-start-open").addEventListener("click", () => openTimeEditor("start"));
+        $("f-end-card").addEventListener("click", () => openTimeEditor("end"));
+        $("time-editor-cancel").addEventListener("click", closeTimeEditor);
+        $("time-editor-apply").addEventListener("click", applyTimeEditor);
+        $("time-editor-clear").addEventListener("click", clearTimeEditor);
+        document.querySelectorAll(".time-quick-actions [data-duration]").forEach((button) => {
+            button.addEventListener("click", () => setEventDuration(Number(button.dataset.duration)));
+        });
+        $("f-time-clear").addEventListener("click", () => {
+            $("f-start").value = "";
+            $("f-end").value = "";
+            updateTimePicker();
+        });
         $("f-image-pick").addEventListener("click", openImagePicker);
         $("f-image-remove").addEventListener("click", () => setFormImage(""));
         $("f-image-preview").addEventListener("error", () => {
@@ -718,7 +1083,7 @@
         let swipeStart = null;
         const featuredVisual = document.querySelector(".featured-visual");
         featuredVisual.addEventListener("pointerdown", (pointerEvent) => {
-            if (selectedFeaturedEvents().length < 2 || pointerEvent.target.closest("button")) return;
+            if (featuredEvents().length < 2 || pointerEvent.target.closest("button")) return;
             swipeStart = { x: pointerEvent.clientX, y: pointerEvent.clientY };
             if (featuredVisual.setPointerCapture) featuredVisual.setPointerCapture(pointerEvent.pointerId);
         });
@@ -772,8 +1137,8 @@
             App.citizenid = d.citizenid;
             App.canAdd = d.canAdd;
             App.isAdmin = d.isAdmin;
-            const refreshedSelectedEvents = selectedFeaturedEvents();
-            const refreshedIndex = refreshedSelectedEvents.findIndex((event) => event.id === currentFeaturedId);
+            const refreshedFeaturedEvents = featuredEvents();
+            const refreshedIndex = refreshedFeaturedEvents.findIndex((event) => event.id === currentFeaturedId);
             App.featuredIndex = refreshedIndex >= 0 ? refreshedIndex : 0;
             updateAddPermissionUI();
             renderCalendar();

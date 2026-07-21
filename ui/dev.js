@@ -31,15 +31,20 @@ window.addEventListener('load', () => {
         return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
     };
     const today = new Date();
+    const upcomingPreview = previewParams.get('featured') === 'upcoming';
+    const firstUpcomingDate = new Date(today);
+    firstUpcomingDate.setDate(today.getDate() + 2);
     const nextEventDate = new Date(today);
     nextEventDate.setDate(today.getDate() + 5);
+    const thirdUpcomingDate = new Date(today);
+    thirdUpcomingDate.setDate(today.getDate() + 7);
     const mockEvents = [
         {
             id: 1,
             citizenid: 'preview-user',
             author: 'Felicity運営局',
             title: '夏祭りナイト 2026',
-            event_date: localDate(today),
+            event_date: localDate(upcomingPreview ? firstUpcomingDate : today),
             start_time: '20:00',
             end_time: '23:00',
             location: 'マーケット広場・ビーチエリア',
@@ -71,7 +76,7 @@ window.addEventListener('load', () => {
             citizenid: 'preview-user',
             author: 'Night Drive Crew',
             title: 'ミッドナイト・ドライブ',
-            event_date: localDate(today),
+            event_date: localDate(upcomingPreview ? thirdUpcomingDate : today),
             start_time: '23:30',
             end_time: null,
             location: 'マーケット広場 集合',
@@ -173,7 +178,7 @@ window.addEventListener('load', () => {
     if (previewParams.get('slide') === 'next') {
         window.setTimeout(() => document.getElementById('featured-next')?.click(), 100);
     }
-    if (['add', 'reminder', 'image', 'admin'].includes(previewParams.get('form'))) {
+    if (['add', 'reminder', 'image', 'admin', 'time', 'time-set'].includes(previewParams.get('form'))) {
         window.setTimeout(() => document.getElementById('header-add')?.click(), 120);
     }
     if (previewParams.get('form') === 'reminder') {
@@ -181,5 +186,14 @@ window.addEventListener('load', () => {
     }
     if (previewParams.get('form') === 'image') {
         window.setTimeout(() => document.getElementById('f-image-pick')?.click(), 200);
+    }
+    if (previewParams.get('form') === 'time') {
+        window.setTimeout(() => document.getElementById('f-start-open')?.click(), 200);
+    }
+    if (previewParams.get('form') === 'time-set') {
+        window.setTimeout(() => document.getElementById('f-start-open')?.click(), 200);
+        window.setTimeout(() => document.querySelector('#time-hour-wheel [data-value="20"]')?.click(), 280);
+        window.setTimeout(() => document.querySelector('#time-minute-wheel [data-value="0"]')?.click(), 340);
+        window.setTimeout(() => document.getElementById('time-editor-apply')?.click(), 620);
     }
 });
