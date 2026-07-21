@@ -24,10 +24,18 @@
                         <img src="event-hero.webp" alt="夜空を彩る花火" />
                         <div class="featured-shade"></div>
                         <span id="featured-status" class="status-badge">注目イベント</span>
+                        <div id="featured-swipe-guide" class="featured-swipe-guide" hidden>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5m8-10 5 5-5 5M4 12h16"/></svg>
+                            <span id="featured-position">1 / 1</span>
+                            <span>スワイプ</span>
+                        </div>
+                        <button id="featured-prev" class="carousel-arrow carousel-prev" type="button" aria-label="前のイベント" hidden>‹</button>
+                        <button id="featured-next" class="carousel-arrow carousel-next" type="button" aria-label="次のイベント" hidden>›</button>
                         <div class="featured-copy">
                             <h2 id="featured-title">次のイベントをチェック</h2>
                             <p id="featured-subtitle">街のみんなの予定をひとつのカレンダーで。</p>
                         </div>
+                        <div id="featured-dots" class="featured-dots" aria-label="イベントのページ" hidden></div>
                     </div>
                     <div class="featured-info">
                         <div class="info-row">
@@ -192,7 +200,9 @@
         editingId: null,
         detailEvent: null,
         featuredEvent: null,
+        featuredIndex: 0,
         participationPending: false,
+        participationPendingEventId: null,
         currentView: "events",
     };
 
@@ -242,18 +252,84 @@
         return `${year}年${month}月${day}日（${weekday}）`;
     }
 
+    function selectedFeaturedEvents() {
+        return [...eventsOn(App.selected)]
+            .sort((a, b) => (a.start_time || "00:00").localeCompare(b.start_time || "00:00"));
+    }
+
     function featuredEvent() {
-        const selectedEvents = eventsOn(App.selected);
-        if (selectedEvents.length) return selectedEvents[0];
+        const selectedEvents = selectedFeaturedEvents();
+        if (selectedEvents.length) {
+            App.featuredIndex = Math.min(App.featuredIndex, selectedEvents.length - 1);
+            return selectedEvents[App.featuredIndex];
+        }
+        App.featuredIndex = 0;
         const upcoming = [...App.events]
             .filter((event) => event.event_date >= todayKey())
             .sort((a, b) => `${a.event_date} ${a.start_time || "00:00"}`.localeCompare(`${b.event_date} ${b.start_time || "00:00"}`));
         return upcoming[0] || App.events[0] || null;
     }
 
+    function renderFeaturedNavigation() {
+        const items = selectedFeaturedEvents();
+        const multiple = items.length > 1;
+        const guide = $("featured-swipe-guide");
+        const previous = $("featured-prev");
+        const next = $("featured-next");
+        const dots = $("featured-dots");
+        guide.hidden = !multiple;
+        previous.hidden = !multiple;
+        next.hidden = !multiple;
+        dots.hidden = !multiple;
+        previous.disabled = App.participationPending;
+        next.disabled = App.participationPending;
+        $("featured-card").classList.toggle("is-carousel", multiple);
+
+        if (!multiple) {
+            dots.innerHTML = "";
+            return;
+        }
+
+        $("featured-position").textContent = `${App.featuredIndex + 1} / ${items.length}`;
+        dots.innerHTML = "";
+        items.forEach((_, index) => {
+            const dot = document.createElement("button");
+            dot.type = "button";
+            dot.className = "carousel-dot" + (index === App.featuredIndex ? " active" : "");
+            dot.disabled = App.participationPending;
+            dot.setAttribute("aria-label", `${index + 1}件目のイベントを表示`);
+            dot.addEventListener("click", () => {
+                if (index === App.featuredIndex) return;
+                const direction = index > App.featuredIndex ? 1 : -1;
+                App.featuredIndex = index;
+                renderFeatured();
+                animateFeatured(direction);
+            });
+            dots.appendChild(dot);
+        });
+    }
+
+    function animateFeatured(direction) {
+        const visual = document.querySelector(".featured-visual");
+        const className = direction > 0 ? "slide-next" : "slide-prev";
+        visual.classList.remove("slide-next", "slide-prev");
+        void visual.offsetWidth;
+        visual.classList.add(className);
+        window.setTimeout(() => visual.classList.remove(className), 240);
+    }
+
+    function changeFeatured(direction) {
+        const items = selectedFeaturedEvents();
+        if (items.length < 2 || App.participationPending) return;
+        App.featuredIndex = (App.featuredIndex + direction + items.length) % items.length;
+        renderFeatured();
+        animateFeatured(direction);
+    }
+
     function renderFeatured() {
         const event = featuredEvent();
         App.featuredEvent = event;
+        renderFeaturedNavigation();
         const action = $("featured-action");
         if (!event) {
             $("featured-status").textContent = "EVENT CALENDAR";
@@ -280,8 +356,10 @@
         $("featured-participants").textContent = `${Number(event.participant_count) || 0}人が参加予定`;
         $("featured-description").textContent = event.description || "選択日の予定一覧からイベント情報を確認できます。";
         const joined = hasJoined(event);
+        const pendingCurrentEvent = App.participationPending
+            && Number(App.participationPendingEventId) === Number(event.id);
         action.classList.toggle("joined", joined);
-        $("featured-action-label").textContent = App.participationPending
+        $("featured-action-label").textContent = pendingCurrentEvent
             ? "処理中…"
             : joined ? "参加予約を取り消す" : "参加予約する";
         action.disabled = App.participationPending;
@@ -306,6 +384,7 @@
             if (dow === 6) cell.classList.add("sat");
             cell.innerHTML = `<span>${d}</span>` + (eventsOn(key).length ? '<i class="dot"></i>' : "");
             cell.addEventListener("click", () => {
+                if (App.selected !== key) App.featuredIndex = 0;
                 App.selected = key;
                 App.year = date.getFullYear();
                 App.month = date.getMonth();
@@ -344,6 +423,7 @@
     function requestParticipation(event) {
         if (!event || App.participationPending) return;
         App.participationPending = true;
+        App.participationPendingEventId = event.id;
         renderFeatured();
         renderJoinedEvents();
         fetchNui("toggleParticipation", { id: event.id });
@@ -500,6 +580,7 @@
             App.month--;
             if (App.month < 0) { App.month = 11; App.year--; }
             App.selected = dateKey(App.year, App.month, 1);
+            App.featuredIndex = 0;
             renderCalendar();
             renderDay();
         });
@@ -507,11 +588,32 @@
             App.month++;
             if (App.month > 11) { App.month = 0; App.year++; }
             App.selected = dateKey(App.year, App.month, 1);
+            App.featuredIndex = 0;
             renderCalendar();
             renderDay();
         });
         $("add-btn").addEventListener("click", () => openForm(null));
+        $("featured-prev").addEventListener("click", () => changeFeatured(-1));
+        $("featured-next").addEventListener("click", () => changeFeatured(1));
         $("featured-action").addEventListener("click", () => requestParticipation(App.featuredEvent));
+
+        let swipeStart = null;
+        const featuredVisual = document.querySelector(".featured-visual");
+        featuredVisual.addEventListener("pointerdown", (pointerEvent) => {
+            if (selectedFeaturedEvents().length < 2 || pointerEvent.target.closest("button")) return;
+            swipeStart = { x: pointerEvent.clientX, y: pointerEvent.clientY };
+            if (featuredVisual.setPointerCapture) featuredVisual.setPointerCapture(pointerEvent.pointerId);
+        });
+        featuredVisual.addEventListener("pointerup", (pointerEvent) => {
+            if (!swipeStart) return;
+            const deltaX = pointerEvent.clientX - swipeStart.x;
+            const deltaY = pointerEvent.clientY - swipeStart.y;
+            swipeStart = null;
+            if (Math.abs(deltaX) >= 42 && Math.abs(deltaX) > Math.abs(deltaY) * 1.15) {
+                changeFeatured(deltaX < 0 ? 1 : -1);
+            }
+        });
+        featuredVisual.addEventListener("pointercancel", () => { swipeStart = null; });
         $("header-add").addEventListener("click", () => App.canAdd ? openForm(null) : toast("予定を追加する権限がありません", false));
         $("nav-events").addEventListener("click", () => showView("events"));
         $("nav-joined").addEventListener("click", () => showView("joined"));
@@ -547,16 +649,21 @@
             init();
         } else if (e.data?.type === "events") {
             const d = e.data.data;
+            const currentFeaturedId = App.featuredEvent?.id;
             App.events = d.events || [];
             App.citizenid = d.citizenid;
             App.canAdd = d.canAdd;
             App.isAdmin = d.isAdmin;
+            const refreshedSelectedEvents = selectedFeaturedEvents();
+            const refreshedIndex = refreshedSelectedEvents.findIndex((event) => event.id === currentFeaturedId);
+            App.featuredIndex = refreshedIndex >= 0 ? refreshedIndex : 0;
             $("add-btn").style.display = App.canAdd ? "" : "none";
             renderCalendar();
             renderDay();
             renderJoinedEvents();
         } else if (e.data?.type === "result") {
             App.participationPending = false;
+            App.participationPendingEventId = null;
             renderFeatured();
             renderJoinedEvents();
             toast(e.data.data.message, e.data.data.ok);

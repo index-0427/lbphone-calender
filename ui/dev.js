@@ -49,6 +49,21 @@ window.addEventListener('load', () => {
             participant_count: 34,
             has_joined: 1,
         },
+        {
+            id: 3,
+            citizenid: 'preview-user',
+            author: 'Night Drive Crew',
+            title: 'ミッドナイト・ドライブ',
+            event_date: localDate(today),
+            start_time: '23:30',
+            end_time: null,
+            location: 'マーケット広場 集合',
+            description: '夏祭りのあとに、街の夜景を巡るナイトドライブへ出発します。',
+            reminder_enabled: false,
+            reminder_at: null,
+            participant_count: 18,
+            has_joined: 0,
+        },
     ];
 
     const sendMockEvents = () => window.postMessage({
@@ -137,5 +152,8 @@ window.addEventListener('load', () => {
     window.postMessage('componentsLoaded');
     if (new URLSearchParams(window.location.search).get('view') === 'joined') {
         window.setTimeout(() => document.getElementById('nav-joined')?.click(), 80);
+    }
+    if (new URLSearchParams(window.location.search).get('slide') === 'next') {
+        window.setTimeout(() => document.getElementById('featured-next')?.click(), 100);
     }
 });

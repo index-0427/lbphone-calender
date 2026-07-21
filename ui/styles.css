@@ -4,6 +4,10 @@
     box-sizing: border-box;
 }
 
+[hidden] {
+    display: none !important;
+}
+
 :root {
     --accent: #ef3d79;
     --accent-dark: #d92d68;
@@ -136,6 +140,8 @@ body {
     position: relative;
     overflow: hidden;
     background: #071227;
+    touch-action: pan-y;
+    user-select: none;
 }
 
 .featured-visual img {
@@ -167,12 +173,137 @@ body {
     box-shadow: 0 5px 16px rgba(224, 35, 100, 0.28);
 }
 
+.featured-swipe-guide {
+    position: absolute;
+    top: 13px;
+    right: 14px;
+    z-index: 2;
+    height: 26px;
+    padding: 0 8px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 13px;
+    background: rgba(4, 8, 20, 0.54);
+    color: #fff;
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.5rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+}
+
+.featured-swipe-guide svg {
+    width: 13px;
+    height: 13px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+#featured-position {
+    padding-right: 5px;
+    border-right: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+.carousel-arrow {
+    position: absolute;
+    top: 50%;
+    z-index: 3;
+    width: 31px;
+    height: 31px;
+    transform: translateY(-50%);
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    border-radius: 50%;
+    background: rgba(5, 8, 20, 0.48);
+    color: #fff;
+    font-family: Arial, sans-serif;
+    font-size: 1.5rem;
+    line-height: 1;
+    backdrop-filter: blur(7px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+}
+
+.carousel-arrow:active {
+    background: rgba(239, 61, 121, 0.9);
+}
+
+.carousel-arrow:disabled,
+.carousel-dot:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.carousel-prev {
+    left: 10px;
+}
+
+.carousel-next {
+    right: 10px;
+}
+
 .featured-copy {
     position: absolute;
     left: 17px;
     right: 17px;
     bottom: 15px;
     color: #fff;
+}
+
+.featured-card.is-carousel .featured-copy {
+    left: 48px;
+    right: 48px;
+    bottom: 31px;
+}
+
+.featured-dots {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 12px;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.carousel-dot {
+    width: 6px;
+    height: 6px;
+    padding: 0;
+    border: 0;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
+    transition: width 160ms ease, background 160ms ease;
+    cursor: pointer;
+}
+
+.carousel-dot.active {
+    width: 18px;
+    background: #fff;
+}
+
+.featured-visual.slide-next .featured-copy {
+    animation: featured-slide-next 220ms ease-out;
+}
+
+.featured-visual.slide-prev .featured-copy {
+    animation: featured-slide-prev 220ms ease-out;
+}
+
+@keyframes featured-slide-next {
+    from { opacity: 0.35; transform: translateX(15px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes featured-slide-prev {
+    from { opacity: 0.35; transform: translateX(-15px); }
+    to { opacity: 1; transform: translateX(0); }
 }
 
 .featured-copy h2 {
