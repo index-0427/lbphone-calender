@@ -6,7 +6,7 @@ Config.AdminAce = "admin"
 Config.ReminderCheckInterval = 60 * 1000
 
 -- "online" は現在オンライン中の全員、"all" はオフライン中の住民分も保存する。
-Config.ReminderAudience = "online"
+Config.ReminderAudience = "all"
 Config.ReminderNotificationTitle = "イベントリマインダー"
 
 -- gang は satou_gang 管理のため QBCore の gang.isboss では判定できない

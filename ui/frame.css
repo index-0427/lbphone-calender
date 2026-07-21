@@ -82,3 +82,7 @@
 
     font-family: 'Poppins', sans-serif;
 }
+
+[data-theme="dark"] .phone-time {
+    color: white;
+}

@@ -10,6 +10,21 @@ window.addEventListener('load', () => {
     }
     document.getElementById('phone-wrapper').style.display = 'block';
     document.body.style.visibility = 'visible';
+    const previewParams = new URLSearchParams(window.location.search);
+    document.documentElement.dataset.theme = previewParams.get('theme') === 'dark' ? 'dark' : 'light';
+    const mockCanAdd = previewParams.get('role') !== 'viewer';
+    const mockIsAdmin = !['viewer', 'boss'].includes(previewParams.get('role'));
+
+    window.components = window.components || {
+        setGallery(options) {
+            const imageUrl = new URL('event-hero.webp', window.location.href).href;
+            window.setTimeout(() => options?.onSelect?.({
+                id: 'browser-preview-image',
+                src: imageUrl,
+                isVideo: false,
+            }), 120);
+        },
+    };
 
     const localDate = (date) => {
         const pad = (value) => String(value).padStart(2, '0');
@@ -31,8 +46,10 @@ window.addEventListener('load', () => {
             description: '屋台やゲームコーナー、ライブステージに加えて花火大会も開催します。みんなで最高の夏の思い出を作ろう！',
             reminder_enabled: true,
             reminder_at: `${localDate(today)} 19:30`,
+            reminder_minutes: 30,
             participant_count: 128,
             has_joined: 0,
+            hide_author: 0,
         },
         {
             id: 2,
@@ -71,8 +88,8 @@ window.addEventListener('load', () => {
         data: {
             events: mockEvents,
             citizenid: 'preview-user',
-            canAdd: true,
-            isAdmin: true,
+            canAdd: mockCanAdd,
+            isAdmin: mockIsAdmin,
         },
     });
 
@@ -150,10 +167,19 @@ window.addEventListener('load', () => {
     phoneWrapper.parentNode.removeChild(phoneWrapper);
 
     window.postMessage('componentsLoaded');
-    if (new URLSearchParams(window.location.search).get('view') === 'joined') {
+    if (previewParams.get('view') === 'joined') {
         window.setTimeout(() => document.getElementById('nav-joined')?.click(), 80);
     }
-    if (new URLSearchParams(window.location.search).get('slide') === 'next') {
+    if (previewParams.get('slide') === 'next') {
         window.setTimeout(() => document.getElementById('featured-next')?.click(), 100);
+    }
+    if (['add', 'reminder', 'image', 'admin'].includes(previewParams.get('form'))) {
+        window.setTimeout(() => document.getElementById('header-add')?.click(), 120);
+    }
+    if (previewParams.get('form') === 'reminder') {
+        window.setTimeout(() => document.getElementById('f-reminder-enabled')?.click(), 180);
+    }
+    if (previewParams.get('form') === 'image') {
+        window.setTimeout(() => document.getElementById('f-image-pick')?.click(), 200);
     }
 });

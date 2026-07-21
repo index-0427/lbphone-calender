@@ -12,7 +12,7 @@
             <header class="app-header">
                 <span aria-hidden="true"></span>
                 <h1 id="app-title">イベント</h1>
-                <button id="header-add" class="icon-btn" aria-label="予定を追加">
+                <button id="header-add" class="icon-btn" aria-label="予定を追加" hidden>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                 </button>
             </header>
@@ -21,7 +21,7 @@
                 <div id="events-view" class="app-view active">
                 <section id="featured-card" class="featured-card">
                     <div class="featured-visual">
-                        <img src="event-hero.webp" alt="夜空を彩る花火" />
+                        <img id="featured-image" src="event-hero.webp" alt="イベント画像" />
                         <div class="featured-shade"></div>
                         <span id="featured-status" class="status-badge">注目イベント</span>
                         <div id="featured-swipe-guide" class="featured-swipe-guide" hidden>
@@ -98,7 +98,7 @@
                 </section>
             </main>
 
-            <nav class="bottom-nav" aria-label="アプリ内ナビゲーション">
+            <nav id="bottom-nav" class="bottom-nav without-add" aria-label="アプリ内ナビゲーション">
                 <button id="nav-events" class="bottom-nav-item active">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v3m12-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z"/><path d="M8 13h3v3H8z"/></svg>
                     <span>イベント</span>
@@ -107,7 +107,7 @@
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v3m12-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z"/><path d="m8 14 2 2 5-5"/></svg>
                     <span>参加予定</span>
                 </button>
-                <button id="nav-add" class="bottom-nav-item">
+                <button id="nav-add" class="bottom-nav-item" hidden>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v8m-4-4h8"/></svg>
                     <span>予定追加</span>
                 </button>
@@ -129,12 +129,42 @@
                     </div>
                     <input id="f-location" type="text" maxlength="100" placeholder="場所" />
                     <textarea id="f-desc" maxlength="1000" placeholder="メモ" rows="3"></textarea>
+                    <div class="event-image-field">
+                        <div class="event-image-heading">
+                            <span>イベント画像</span>
+                            <small>LB Phoneの写真から1枚</small>
+                        </div>
+                        <button id="f-image-pick" class="image-picker-button" type="button">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z"/><circle cx="9" cy="10" r="2"/><path d="m5 17 4-4 3 3 2-2 5 3"/></svg>
+                            写真を選択
+                        </button>
+                        <div id="f-image-preview-wrap" class="event-image-preview" hidden>
+                            <img id="f-image-preview" alt="選択したイベント画像" />
+                            <button id="f-image-remove" type="button" aria-label="選択した画像を削除">×</button>
+                        </div>
+                        <input id="f-image-url" type="hidden" />
+                    </div>
+                    <label id="f-hide-author-row" class="admin-visibility-toggle" hidden>
+                        <input id="f-hide-author" type="checkbox" />
+                        <span>
+                            <strong>追加者名を非表示</strong>
+                            <small>イベント一覧と詳細画面で名前を隠します</small>
+                        </span>
+                        <em>ADMIN</em>
+                    </label>
                     <label class="reminder-toggle">
                         <input id="f-reminder-enabled" type="checkbox" /> リマインド通知を有効にする
                     </label>
                     <div id="reminder-fields" class="reminder-fields">
-                        <label for="f-reminder-at">通知日時</label>
-                        <input id="f-reminder-at" type="datetime-local" />
+                        <label for="f-reminder-offset">通知タイミング</label>
+                        <select id="f-reminder-offset">
+                            <option value="10">10分前</option>
+                            <option value="30" selected>30分前</option>
+                            <option value="60">1時間前</option>
+                            <option value="1440">1日前</option>
+                            <option value="4320">3日前</option>
+                        </select>
+                        <small>イベントの開始日時を基準に通知します</small>
                     </div>
                     <div class="modal-buttons">
                         <button class="btn btn-cancel" id="form-cancel">キャンセル</button>
@@ -209,6 +239,14 @@
     const $ = (id) => document.getElementById(id);
     const pad = (n) => String(n).padStart(2, "0");
     const dateKey = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`;
+    const DEFAULT_EVENT_IMAGE = "event-hero.webp";
+    const REMINDER_LABELS = new Map([
+        [10, "10分前"],
+        [30, "30分前"],
+        [60, "1時間前"],
+        [1440, "1日前"],
+        [4320, "3日前"],
+    ]);
 
     function todayKey() {
         const t = new Date();
@@ -232,14 +270,62 @@
         return !!e && (e.has_joined === true || Number(e.has_joined) === 1);
     }
 
-    function reminderInputValue(value) {
-        return value ? String(value).replace(" ", "T").slice(0, 16) : "";
+    function isAuthorHidden(e) {
+        return !!e && (e.hide_author === true || Number(e.hide_author) === 1);
+    }
+
+    function isAppAdmin() {
+        return App.isAdmin === true || Number(App.isAdmin) === 1;
+    }
+
+    function reminderMinutesValue(event) {
+        const direct = Number(event?.reminder_minutes);
+        if (REMINDER_LABELS.has(direct)) return direct;
+
+        if (event?.reminder_at && event?.event_date) {
+            const start = new Date(`${event.event_date}T${event.start_time || "00:00"}`).getTime();
+            const reminder = new Date(String(event.reminder_at).replace(" ", "T")).getTime();
+            const calculated = Math.round((start - reminder) / 60000);
+            if (REMINDER_LABELS.has(calculated)) return calculated;
+        }
+        return 30;
     }
 
     function updateReminderFields() {
         const enabled = $("f-reminder-enabled").checked;
         $("reminder-fields").classList.toggle("active", enabled);
-        $("f-reminder-at").disabled = !enabled;
+        $("f-reminder-offset").disabled = !enabled;
+    }
+
+    function setFormImage(imageUrl) {
+        const url = String(imageUrl || "");
+        $("f-image-url").value = url;
+        $("f-image-preview-wrap").hidden = !url;
+        $("f-image-pick").classList.toggle("has-image", !!url);
+        if (url) $("f-image-preview").src = url;
+    }
+
+    function openImagePicker() {
+        if (!globalThis.components?.setGallery) {
+            toast("LB Phoneのギャラリーを開けませんでした", false);
+            return;
+        }
+
+        globalThis.components.setGallery({
+            includeVideos: false,
+            includeImages: true,
+            allowExternal: false,
+            multiSelect: false,
+            onSelect(data) {
+                const selected = Array.isArray(data) ? data[0] : data;
+                const imageUrl = String(selected?.src || "");
+                if (!/^https?:\/\//i.test(imageUrl)) {
+                    toast("この画像はイベント画像として使用できません", false);
+                    return;
+                }
+                setFormImage(imageUrl);
+            },
+        });
     }
 
     function canManage(e) {
@@ -332,6 +418,7 @@
         renderFeaturedNavigation();
         const action = $("featured-action");
         if (!event) {
+            $("featured-image").src = DEFAULT_EVENT_IMAGE;
             $("featured-status").textContent = "EVENT CALENDAR";
             $("featured-title").textContent = "次のイベントをチェック";
             $("featured-subtitle").textContent = "街のみんなの予定をひとつのカレンダーで。";
@@ -347,6 +434,7 @@
         }
 
         const selected = event.event_date === App.selected;
+        $("featured-image").src = event.image_url || DEFAULT_EVENT_IMAGE;
         $("featured-status").textContent = selected ? "選択中のイベント" : "次回イベント";
         $("featured-title").textContent = event.title;
         $("featured-subtitle").textContent = event.location ? `${event.location}で開催予定` : "イベントの詳細をチェック";
@@ -407,13 +495,15 @@
             return;
         }
         for (const e of items) {
+            const visibleAuthor = isAuthorHidden(e) ? "" : String(e.author || "");
+            const eventMeta = [visibleAuthor, e.location || ""].filter(Boolean).join(" ・ ");
             const row = document.createElement("div");
             row.className = "event-item";
             row.innerHTML =
                 `<div class="event-date-tile"><strong>${d}</strong><span>${m}月</span></div>` +
                 `<div class="event-body"><div class="event-title">${esc(e.title)}</div>` +
                 `<div class="event-time">${timeLabel(e)}</div>` +
-                `<div class="event-sub">${esc(e.author)}${e.location ? " ・ " + esc(e.location) : ""}</div></div>` +
+                `${eventMeta ? `<div class="event-sub">${esc(eventMeta)}</div>` : ""}</div>` +
                 `<span class="event-chevron">›</span>`;
             row.addEventListener("click", () => openDetail(e));
             list.appendChild(row);
@@ -484,6 +574,14 @@
         $("app-content").scrollTop = 0;
     }
 
+    function updateAddPermissionUI() {
+        const allowed = App.canAdd === true || Number(App.canAdd) === 1;
+        $("header-add").hidden = !allowed;
+        $("nav-add").hidden = !allowed;
+        $("add-btn").style.display = allowed ? "" : "none";
+        $("bottom-nav").classList.toggle("without-add", !allowed);
+    }
+
     function esc(s) {
         const div = document.createElement("div");
         div.textContent = s ?? "";
@@ -496,10 +594,14 @@
         $("d-time").textContent = `🕐 ${e.event_date} ${timeLabel(e)}`;
         $("d-location").textContent = e.location ? `📍 ${e.location}` : "";
         $("d-location").style.display = e.location ? "" : "none";
-        $("d-author").textContent = `👤 ${e.author}`;
-        const reminderAt = hasReminder(e) ? reminderInputValue(e.reminder_at) : "";
-        $("d-reminder").textContent = reminderAt ? `🔔 ${reminderAt.replace("T", " ")}` : "";
-        $("d-reminder").style.display = reminderAt ? "" : "none";
+        const visibleAuthor = isAuthorHidden(e) ? "" : String(e.author || "");
+        $("d-author").textContent = visibleAuthor ? `👤 ${visibleAuthor}` : "";
+        $("d-author").style.display = visibleAuthor ? "" : "none";
+        const reminderMinutes = hasReminder(e) ? reminderMinutesValue(e) : null;
+        $("d-reminder").textContent = reminderMinutes
+            ? `🔔 開催${REMINDER_LABELS.get(reminderMinutes)}に通知`
+            : "";
+        $("d-reminder").style.display = reminderMinutes ? "" : "none";
 
         $("d-desc").textContent = e.description || "";
         $("d-desc").style.display = e.description ? "" : "none";
@@ -517,8 +619,11 @@
         $("f-end").value = e ? e.end_time || "" : "";
         $("f-location").value = e ? e.location : "";
         $("f-desc").value = e ? e.description || "" : "";
+        setFormImage(e ? e.image_url : "");
+        $("f-hide-author-row").hidden = !isAppAdmin();
+        $("f-hide-author").checked = isAppAdmin() && isAuthorHidden(e);
         $("f-reminder-enabled").checked = hasReminder(e);
-        $("f-reminder-at").value = e ? reminderInputValue(e.reminder_at) : "";
+        $("f-reminder-offset").value = String(e ? reminderMinutesValue(e) : 30);
         updateReminderFields();
 
         show("modal-form");
@@ -545,9 +650,9 @@
         }
 
         const reminderEnabled = $("f-reminder-enabled").checked;
-        const reminderAt = $("f-reminder-at").value;
-        if (reminderEnabled && !reminderAt) {
-            toast("リマインド通知日時を入力してください", false);
+        const reminderMinutes = Number($("f-reminder-offset").value);
+        if (reminderEnabled && !REMINDER_LABELS.has(reminderMinutes)) {
+            toast("通知タイミングを選択してください", false);
             return;
         }
 
@@ -558,9 +663,11 @@
             endTime: $("f-end").value || null,
             location: $("f-location").value.trim(),
             description: $("f-desc").value.trim(),
+            imageUrl: $("f-image-url").value || null,
             reminderEnabled,
-            reminderAt: reminderEnabled ? reminderAt : null,
+            reminderMinutes: reminderEnabled ? reminderMinutes : null,
         };
+        if (isAppAdmin()) payload.hideAuthor = $("f-hide-author").checked;
         if (App.editingId) {
             payload.id = App.editingId;
             fetchNui("updateEvent", payload);
@@ -593,6 +700,17 @@
             renderDay();
         });
         $("add-btn").addEventListener("click", () => openForm(null));
+        $("f-image-pick").addEventListener("click", openImagePicker);
+        $("f-image-remove").addEventListener("click", () => setFormImage(""));
+        $("f-image-preview").addEventListener("error", () => {
+            setFormImage("");
+            toast("選択した画像を読み込めませんでした", false);
+        });
+        $("featured-image").addEventListener("error", () => {
+            if (!$("featured-image").src.endsWith(DEFAULT_EVENT_IMAGE)) {
+                $("featured-image").src = DEFAULT_EVENT_IMAGE;
+            }
+        });
         $("featured-prev").addEventListener("click", () => changeFeatured(-1));
         $("featured-next").addEventListener("click", () => changeFeatured(1));
         $("featured-action").addEventListener("click", () => requestParticipation(App.featuredEvent));
@@ -657,7 +775,7 @@
             const refreshedSelectedEvents = selectedFeaturedEvents();
             const refreshedIndex = refreshedSelectedEvents.findIndex((event) => event.id === currentFeaturedId);
             App.featuredIndex = refreshedIndex >= 0 ? refreshedIndex : 0;
-            $("add-btn").style.display = App.canAdd ? "" : "none";
+            updateAddPermissionUI();
             renderCalendar();
             renderDay();
             renderJoinedEvents();

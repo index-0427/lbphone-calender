@@ -72,12 +72,14 @@ local function ensureSchema()
             `id` INT AUTO_INCREMENT PRIMARY KEY,
             `citizenid` VARCHAR(50) NOT NULL,
             `author` VARCHAR(100) NOT NULL,
+            `hide_author` TINYINT(1) NOT NULL DEFAULT 0,
             `title` VARCHAR(100) NOT NULL,
             `event_date` CHAR(10) NOT NULL,
             `start_time` CHAR(5) DEFAULT NULL,
             `end_time` CHAR(5) DEFAULT NULL,
             `location` VARCHAR(100) NOT NULL DEFAULT '',
             `description` TEXT,
+            `image_url` TEXT DEFAULT NULL,
             `reminder_enabled` TINYINT(1) NOT NULL DEFAULT 0,
             `reminder_at` DATETIME DEFAULT NULL,
             `reminder_sent_at` DATETIME DEFAULT NULL,
@@ -88,8 +90,12 @@ local function ensureSchema()
     ]])
 
     -- 既存データを変更せず、不足している構造だけを追加する。
+    ensureColumn("phone_calendar_events", "hide_author",
+        "TINYINT(1) NOT NULL DEFAULT 0 AFTER `author`")
+    ensureColumn("phone_calendar_events", "image_url",
+        "TEXT DEFAULT NULL AFTER `description`")
     ensureColumn("phone_calendar_events", "reminder_enabled",
-        "TINYINT(1) NOT NULL DEFAULT 0 AFTER `description`")
+        "TINYINT(1) NOT NULL DEFAULT 0 AFTER `image_url`")
     ensureColumn("phone_calendar_events", "reminder_at",
         "DATETIME DEFAULT NULL AFTER `reminder_enabled`")
     ensureColumn("phone_calendar_events", "reminder_sent_at",
@@ -174,15 +180,28 @@ local function sendEvents(src)
             SELECT
                 e.id,
                 e.citizenid,
-                e.author,
+                CASE
+                    WHEN e.hide_author = 1 AND ? = 0 THEN NULL
+                    ELSE e.author
+                END AS author,
+                e.hide_author,
                 e.title,
                 e.event_date,
                 e.start_time,
                 e.end_time,
                 e.location,
                 e.description,
+                e.image_url,
                 e.reminder_enabled,
                 DATE_FORMAT(e.reminder_at, '%Y-%m-%d %H:%i') AS reminder_at,
+                TIMESTAMPDIFF(
+                    MINUTE,
+                    e.reminder_at,
+                    STR_TO_DATE(
+                        CONCAT(e.event_date, ' ', COALESCE(NULLIF(e.start_time, ''), '00:00')),
+                        '%Y-%m-%d %H:%i'
+                    )
+                ) AS reminder_minutes,
                 (
                     SELECT COUNT(*)
                     FROM phone_calendar_event_participants p
@@ -196,7 +215,7 @@ local function sendEvents(src)
             FROM phone_calendar_events e
             ORDER BY e.event_date, e.start_time
         ]],
-        { player.PlayerData.citizenid },
+        { admin and 1 or 0, player.PlayerData.citizenid },
         function(rows)
             TriggerClientEvent("calendar:client:events", src, {
                 events = rows or {},
@@ -208,50 +227,101 @@ local function sendEvents(src)
     )
 end
 
-local function isReminderEnabled(value)
+local function isTruthy(value)
     return value == true or value == 1 or value == "1"
 end
 
-local function reminderDateTimeOrNil(value)
-    local raw = tostring(value or "")
-    local year, month, day, hour, minute = raw:match("^(%d%d%d%d)%-(%d%d)%-(%d%d)[T ](%d%d):(%d%d)$")
-    if not year then return nil end
+local allowedReminderMinutes = {
+    [10] = true,
+    [30] = true,
+    [60] = true,
+    [1440] = true,
+    [4320] = true,
+}
 
+local function datePartsOrNil(value)
+    local year, month, day = tostring(value or ""):match("^(%d%d%d%d)%-(%d%d)%-(%d%d)$")
     year, month, day = tonumber(year), tonumber(month), tonumber(day)
-    hour, minute = tonumber(hour), tonumber(minute)
-    if year < 1970 or month < 1 or month > 12 or hour > 23 or minute > 59 then return nil end
-
+    if not year or not month or not day or year < 1970 or month < 1 or month > 12 then return nil end
     local monthDays = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 }
     if year % 400 == 0 or (year % 4 == 0 and year % 100 ~= 0) then
         monthDays[2] = 29
     end
     if day < 1 or day > monthDays[month] then return nil end
 
-    return ("%04d-%02d-%02d %02d:%02d:00"):format(year, month, day, hour, minute)
+    return year, month, day
+end
+
+local function timeOrNil(value)
+    local hour, minute = tostring(value or ""):match("^(%d%d):(%d%d)$")
+    hour, minute = tonumber(hour), tonumber(minute)
+    if not hour or not minute or hour > 23 or minute > 59 then return nil end
+    return ("%02d:%02d"):format(hour, minute), hour, minute
+end
+
+local function reminderDateTimeFromOffset(date, startTime, reminderMinutes)
+    if not allowedReminderMinutes[reminderMinutes] then return nil end
+    local year, month, day = datePartsOrNil(date)
+    if not year then return nil end
+
+    local hour, minute = 0, 0
+    if startTime then
+        local normalizedTime, parsedHour, parsedMinute = timeOrNil(startTime)
+        if not normalizedTime then return nil end
+        hour, minute = parsedHour, parsedMinute
+    end
+
+    local eventTimestamp = os.time({
+        year = year,
+        month = month,
+        day = day,
+        hour = hour,
+        min = minute,
+        sec = 0,
+    })
+    if not eventTimestamp then return nil end
+
+    return os.date("%Y-%m-%d %H:%M:%S", eventTimestamp - (reminderMinutes * 60))
+end
+
+local function imageUrlOrNil(value)
+    local imageUrl = tostring(value or "")
+    if imageUrl == "" then return nil end
+    if #imageUrl > 2048 or imageUrl:find("[%s%c]") then return nil end
+    if not imageUrl:lower():match("^https?://") then return nil end
+    return imageUrl
 end
 
 local function sanitize(data)
     if type(data) ~= "table" then return nil end
     local title = tostring(data.title or ""):sub(1, 100)
     local date = tostring(data.date or "")
-    if title == "" or not date:match("^%d%d%d%d%-%d%d%-%d%d$") then return nil end
+    if title == "" or not datePartsOrNil(date) then return nil end
 
-    local reminderEnabled = isReminderEnabled(data.reminderEnabled)
-    local reminderAt = reminderDateTimeOrNil(data.reminderAt)
+    local startTime = timeOrNil(data.startTime)
+    local endTime = timeOrNil(data.endTime)
+    if data.startTime and tostring(data.startTime) ~= "" and not startTime then return nil end
+    if data.endTime and tostring(data.endTime) ~= "" and not endTime then return nil end
+
+    local reminderEnabled = isTruthy(data.reminderEnabled)
+    local reminderMinutes = tonumber(data.reminderMinutes)
+    local reminderAt = reminderEnabled
+        and reminderDateTimeFromOffset(date, startTime, reminderMinutes)
+        or nil
     if reminderEnabled and not reminderAt then return nil end
-    if not reminderEnabled then reminderAt = nil end
 
-    local function timeOrNil(v)
-        v = tostring(v or "")
-        return v:match("^%d%d:%d%d$") and v or nil
-    end
+    local rawImageUrl = tostring(data.imageUrl or "")
+    local imageUrl = imageUrlOrNil(rawImageUrl)
+    if rawImageUrl ~= "" and not imageUrl then return nil end
+
     return {
         title = title,
         date = date,
-        startTime = timeOrNil(data.startTime),
-        endTime = timeOrNil(data.endTime),
+        startTime = startTime,
+        endTime = endTime,
         location = tostring(data.location or ""):sub(1, 100),
         description = tostring(data.description or ""):sub(1, 1000),
+        imageUrl = imageUrl,
         reminderEnabled = reminderEnabled,
         reminderAt = reminderAt,
     }
@@ -329,7 +399,8 @@ RegisterNetEvent("calendar:server:addEvent", function(data)
     local player = getPlayer(src)
     if not player then return end
     if not waitForSchema(src) then return end
-    if not (isAdmin(src) or canAddEvent(player)) then
+    local admin = isAdmin(src)
+    if not (admin or canAddEvent(player)) then
         sendResult(src, false, "予定を追加する権限がありません")
         return
     end
@@ -340,9 +411,10 @@ RegisterNetEvent("calendar:server:addEvent", function(data)
     end
     local charinfo = player.PlayerData.charinfo
     local author = ("%s %s"):format(charinfo.firstname, charinfo.lastname)
+    local hideAuthor = admin and isTruthy(data.hideAuthor) or false
     MySQL.insert(
-        "INSERT INTO phone_calendar_events (citizenid, author, title, event_date, start_time, end_time, location, description, reminder_enabled, reminder_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        { player.PlayerData.citizenid, author, ev.title, ev.date, ev.startTime, ev.endTime, ev.location, ev.description, ev.reminderEnabled and 1 or 0, ev.reminderAt },
+        "INSERT INTO phone_calendar_events (citizenid, author, hide_author, title, event_date, start_time, end_time, location, description, image_url, reminder_enabled, reminder_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        { player.PlayerData.citizenid, author, hideAuthor and 1 or 0, ev.title, ev.date, ev.startTime, ev.endTime, ev.location, ev.description, ev.imageUrl, ev.reminderEnabled and 1 or 0, ev.reminderAt },
         function(id)
             if id and id > 0 then
                 sendResult(src, true, "予定を追加しました")
@@ -363,7 +435,7 @@ local function withOwnedEvent(src, data, cb)
         sendResult(src, false, "入力内容が正しくありません")
         return
     end
-    MySQL.single("SELECT id, citizenid, reminder_enabled, DATE_FORMAT(reminder_at, '%Y-%m-%d %H:%i:%s') AS reminder_at FROM phone_calendar_events WHERE id = ?", { id }, function(row)
+    MySQL.single("SELECT id, citizenid, hide_author, reminder_enabled, DATE_FORMAT(reminder_at, '%Y-%m-%d %H:%i:%s') AS reminder_at FROM phone_calendar_events WHERE id = ?", { id }, function(row)
         if not row then
             sendResult(src, false, "予定が見つかりません")
             return
@@ -389,9 +461,13 @@ RegisterNetEvent("calendar:server:updateEvent", function(data)
         local reminderChanged = previousEnabled ~= ev.reminderEnabled
             or tostring(row.reminder_at or "") ~= tostring(ev.reminderAt or "")
         local resetSent = reminderChanged and ", reminder_sent_at = NULL" or ""
+        local hideAuthor = row.hide_author == true or row.hide_author == 1 or row.hide_author == "1"
+        if isAdmin(src) then
+            hideAuthor = isTruthy(data.hideAuthor)
+        end
         MySQL.update(
-            "UPDATE phone_calendar_events SET title = ?, event_date = ?, start_time = ?, end_time = ?, location = ?, description = ?, reminder_enabled = ?, reminder_at = ?" .. resetSent .. " WHERE id = ?",
-            { ev.title, ev.date, ev.startTime, ev.endTime, ev.location, ev.description, ev.reminderEnabled and 1 or 0, ev.reminderAt, id },
+            "UPDATE phone_calendar_events SET title = ?, event_date = ?, start_time = ?, end_time = ?, location = ?, description = ?, image_url = ?, hide_author = ?, reminder_enabled = ?, reminder_at = ?" .. resetSent .. " WHERE id = ?",
+            { ev.title, ev.date, ev.startTime, ev.endTime, ev.location, ev.description, ev.imageUrl, hideAuthor and 1 or 0, ev.reminderEnabled and 1 or 0, ev.reminderAt, id },
             function()
                 sendResult(src, true, "予定を更新しました")
                 TriggerClientEvent("calendar:client:refresh", -1)
