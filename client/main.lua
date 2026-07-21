@@ -58,6 +58,11 @@ RegisterNUICallback("deleteEvent", function(data, cb)
     cb("ok")
 end)
 
+RegisterNUICallback("toggleParticipation", function(data, cb)
+    TriggerServerEvent("calendar:server:toggleParticipation", data)
+    cb("ok")
+end)
+
 RegisterNetEvent("calendar:client:events", function(data)
     sendToApp("events", data)
 end)

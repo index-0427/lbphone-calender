@@ -9,26 +9,105 @@
 <body>
     <div id="phone-wrapper">
         <div class="app" id="content">
+            <header class="app-header">
+                <span aria-hidden="true"></span>
+                <h1 id="app-title">イベント</h1>
+                <button id="header-add" class="icon-btn" aria-label="予定を追加">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                </button>
+            </header>
 
-            <div class="cal-header">
-                <button id="prev-month" class="nav-btn">‹</button>
-                <div id="month-label"></div>
-                <button id="next-month" class="nav-btn">›</button>
-            </div>
+            <main id="app-content" class="app-content">
+                <div id="events-view" class="app-view active">
+                <section id="featured-card" class="featured-card">
+                    <div class="featured-visual">
+                        <img src="event-hero.webp" alt="夜空を彩る花火" />
+                        <div class="featured-shade"></div>
+                        <span id="featured-status" class="status-badge">注目イベント</span>
+                        <div class="featured-copy">
+                            <h2 id="featured-title">次のイベントをチェック</h2>
+                            <p id="featured-subtitle">街のみんなの予定をひとつのカレンダーで。</p>
+                        </div>
+                    </div>
+                    <div class="featured-info">
+                        <div class="info-row">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v3m12-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z"/></svg>
+                            <span class="info-label">開催日時</span>
+                            <div><strong id="featured-date">予定を選択してください</strong><span id="featured-time"></span></div>
+                        </div>
+                        <div id="featured-location-row" class="info-row">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+                            <span class="info-label">開催場所</span>
+                            <strong id="featured-location">未定</strong>
+                        </div>
+                        <div id="featured-participants-row" class="info-row">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2m2-12a3 3 0 0 1 0 6m0 1a5 5 0 0 1 4 5"/></svg>
+                            <span class="info-label">参加人数</span>
+                            <strong id="featured-participants">0人が参加予定</strong>
+                        </div>
+                        <p id="featured-description" class="featured-description">日付を選ぶと、その日のイベントがここに表示されます。</p>
+                        <button id="featured-action" class="featured-action" disabled>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v3m12-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z"/><path d="M12 12v5m-2.5-2.5h5"/></svg>
+                            <span id="featured-action-label">参加予約する</span>
+                        </button>
+                    </div>
+                </section>
 
-            <div class="weekdays">
-                <span class="sun">日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span class="sat">土</span>
-            </div>
-            <div id="cal-grid" class="cal-grid"></div>
+                <section class="calendar-card">
+                    <div class="cal-header">
+                        <div id="month-label"></div>
+                        <div class="month-nav">
+                            <button id="prev-month" class="nav-btn" aria-label="前の月">‹</button>
+                            <button id="next-month" class="nav-btn" aria-label="次の月">›</button>
+                        </div>
+                    </div>
+                    <div class="weekdays">
+                        <span class="sun">日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span class="sat">土</span>
+                    </div>
+                    <div id="cal-grid" class="cal-grid"></div>
+                    <div class="calendar-legend"><i></i> イベントあり</div>
+                </section>
 
-            <div class="day-panel">
-                <div class="day-panel-header">
-                    <span id="day-label"></span>
-                    <button id="add-btn" class="add-btn" style="display:none">＋</button>
-                    <button id="help-btn" class="add-btn">？</button>
+                <section class="day-panel">
+                    <div class="day-panel-header">
+                        <div>
+                            <span class="section-kicker">SELECTED DAY</span>
+                            <h2 id="day-label"></h2>
+                        </div>
+                        <button id="add-btn" class="add-btn" style="display:none" aria-label="予定を追加">＋</button>
+                    </div>
+                    <div id="event-list" class="event-list"></div>
+                </section>
                 </div>
-                <div id="event-list" class="event-list"></div>
-            </div>
+
+                <section id="joined-view" class="app-view joined-view">
+                    <div class="joined-view-header">
+                        <span class="section-kicker">MY EVENTS</span>
+                        <h2>参加予定のイベント</h2>
+                        <p>参加予約したイベントをまとめて確認できます。</p>
+                    </div>
+                    <div id="joined-event-list" class="joined-event-list"></div>
+                </section>
+            </main>
+
+            <nav class="bottom-nav" aria-label="アプリ内ナビゲーション">
+                <button id="nav-events" class="bottom-nav-item active">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v3m12-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z"/><path d="M8 13h3v3H8z"/></svg>
+                    <span>イベント</span>
+                </button>
+                <button id="nav-joined" class="bottom-nav-item">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v3m12-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z"/><path d="m8 14 2 2 5-5"/></svg>
+                    <span>参加予定</span>
+                </button>
+                <button id="nav-add" class="bottom-nav-item">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v8m-4-4h8"/></svg>
+                    <span>予定追加</span>
+                </button>
+                <button id="nav-help" class="bottom-nav-item">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.8 9a2.3 2.3 0 1 1 3.4 2c-.8.5-1.2 1-1.2 2m0 3h.01"/></svg>
+                    <span>ヘルプ</span>
+                </button>
+            </nav>
 
             <div id="modal-form" class="modal-overlay">
                 <div class="modal">
@@ -42,6 +121,13 @@
                     </div>
                     <input id="f-location" type="text" maxlength="100" placeholder="場所" />
                     <textarea id="f-desc" maxlength="1000" placeholder="メモ" rows="3"></textarea>
+                    <label class="reminder-toggle">
+                        <input id="f-reminder-enabled" type="checkbox" /> リマインド通知を有効にする
+                    </label>
+                    <div id="reminder-fields" class="reminder-fields">
+                        <label for="f-reminder-at">通知日時</label>
+                        <input id="f-reminder-at" type="datetime-local" />
+                    </div>
                     <div class="modal-buttons">
                         <button class="btn btn-cancel" id="form-cancel">キャンセル</button>
                         <button class="btn btn-confirm" id="form-save">保存</button>
@@ -55,6 +141,7 @@
                     <p id="d-time" class="detail-line"></p>
                     <p id="d-location" class="detail-line"></p>
                     <p id="d-author" class="detail-line"></p>
+                    <p id="d-reminder" class="detail-line"></p>
                     <p id="d-desc" class="detail-desc"></p>
                     <div class="modal-buttons">
                         <button class="btn btn-cancel" id="detail-close">閉じる</button>
@@ -104,6 +191,9 @@
         selected: null,
         editingId: null,
         detailEvent: null,
+        featuredEvent: null,
+        participationPending: false,
+        currentView: "events",
     };
 
     const $ = (id) => document.getElementById(id);
@@ -124,8 +214,77 @@
         return e.end_time ? `${e.start_time}〜${e.end_time}` : e.start_time;
     }
 
+    function hasReminder(e) {
+        return !!e && (e.reminder_enabled === true || Number(e.reminder_enabled) === 1);
+    }
+
+    function hasJoined(e) {
+        return !!e && (e.has_joined === true || Number(e.has_joined) === 1);
+    }
+
+    function reminderInputValue(value) {
+        return value ? String(value).replace(" ", "T").slice(0, 16) : "";
+    }
+
+    function updateReminderFields() {
+        const enabled = $("f-reminder-enabled").checked;
+        $("reminder-fields").classList.toggle("active", enabled);
+        $("f-reminder-at").disabled = !enabled;
+    }
+
     function canManage(e) {
         return App.isAdmin || e.citizenid === App.citizenid;
+    }
+
+    function formatJapaneseDate(key) {
+        const [year, month, day] = key.split("-").map(Number);
+        const weekday = ["日", "月", "火", "水", "木", "金", "土"][new Date(year, month - 1, day).getDay()];
+        return `${year}年${month}月${day}日（${weekday}）`;
+    }
+
+    function featuredEvent() {
+        const selectedEvents = eventsOn(App.selected);
+        if (selectedEvents.length) return selectedEvents[0];
+        const upcoming = [...App.events]
+            .filter((event) => event.event_date >= todayKey())
+            .sort((a, b) => `${a.event_date} ${a.start_time || "00:00"}`.localeCompare(`${b.event_date} ${b.start_time || "00:00"}`));
+        return upcoming[0] || App.events[0] || null;
+    }
+
+    function renderFeatured() {
+        const event = featuredEvent();
+        App.featuredEvent = event;
+        const action = $("featured-action");
+        if (!event) {
+            $("featured-status").textContent = "EVENT CALENDAR";
+            $("featured-title").textContent = "次のイベントをチェック";
+            $("featured-subtitle").textContent = "街のみんなの予定をひとつのカレンダーで。";
+            $("featured-date").textContent = "予定を選択してください";
+            $("featured-time").textContent = "";
+            $("featured-location").textContent = "未定";
+            $("featured-participants").textContent = "0人が参加予定";
+            $("featured-description").textContent = "日付を選ぶと、その日のイベントがここに表示されます。";
+            $("featured-action-label").textContent = "参加予約する";
+            action.classList.remove("joined");
+            action.disabled = true;
+            return;
+        }
+
+        const selected = event.event_date === App.selected;
+        $("featured-status").textContent = selected ? "選択中のイベント" : "次回イベント";
+        $("featured-title").textContent = event.title;
+        $("featured-subtitle").textContent = event.location ? `${event.location}で開催予定` : "イベントの詳細をチェック";
+        $("featured-date").textContent = formatJapaneseDate(event.event_date);
+        $("featured-time").textContent = timeLabel(event);
+        $("featured-location").textContent = event.location || "未定";
+        $("featured-participants").textContent = `${Number(event.participant_count) || 0}人が参加予定`;
+        $("featured-description").textContent = event.description || "選択日の予定一覧からイベント情報を確認できます。";
+        const joined = hasJoined(event);
+        action.classList.toggle("joined", joined);
+        $("featured-action-label").textContent = App.participationPending
+            ? "処理中…"
+            : joined ? "参加予約を取り消す" : "参加予約する";
+        action.disabled = App.participationPending;
     }
 
     function renderCalendar() {
@@ -133,22 +292,23 @@
         const grid = $("cal-grid");
         grid.innerHTML = "";
         const first = new Date(App.year, App.month, 1).getDay();
-        const days = new Date(App.year, App.month + 1, 0).getDate();
-        for (let i = 0; i < first; i++) {
-            grid.appendChild(document.createElement("div"));
-        }
-        for (let d = 1; d <= days; d++) {
-            const key = dateKey(App.year, App.month, d);
+        for (let i = 0; i < 42; i++) {
+            const date = new Date(App.year, App.month, i - first + 1);
+            const d = date.getDate();
+            const key = dateKey(date.getFullYear(), date.getMonth(), d);
             const cell = document.createElement("div");
             cell.className = "day-cell";
+            if (date.getMonth() !== App.month) cell.classList.add("outside");
             if (key === todayKey()) cell.classList.add("today");
             if (key === App.selected) cell.classList.add("selected");
-            const dow = (first + d - 1) % 7;
+            const dow = date.getDay();
             if (dow === 0) cell.classList.add("sun");
             if (dow === 6) cell.classList.add("sat");
             cell.innerHTML = `<span>${d}</span>` + (eventsOn(key).length ? '<i class="dot"></i>' : "");
             cell.addEventListener("click", () => {
                 App.selected = key;
+                App.year = date.getFullYear();
+                App.month = date.getMonth();
                 renderCalendar();
                 renderDay();
             });
@@ -159,6 +319,7 @@
     function renderDay() {
         const [y, m, d] = App.selected.split("-").map(Number);
         $("day-label").textContent = `${m}月${d}日の予定`;
+        renderFeatured();
         const list = $("event-list");
         list.innerHTML = "";
         const items = eventsOn(App.selected);
@@ -170,12 +331,77 @@
             const row = document.createElement("div");
             row.className = "event-item";
             row.innerHTML =
-                `<div class="event-time">${timeLabel(e)}</div>` +
+                `<div class="event-date-tile"><strong>${d}</strong><span>${m}月</span></div>` +
                 `<div class="event-body"><div class="event-title">${esc(e.title)}</div>` +
-                `<div class="event-sub">${esc(e.author)}${e.location ? " ・ " + esc(e.location) : ""}</div></div>`;
+                `<div class="event-time">${timeLabel(e)}</div>` +
+                `<div class="event-sub">${esc(e.author)}${e.location ? " ・ " + esc(e.location) : ""}</div></div>` +
+                `<span class="event-chevron">›</span>`;
             row.addEventListener("click", () => openDetail(e));
             list.appendChild(row);
         }
+    }
+
+    function requestParticipation(event) {
+        if (!event || App.participationPending) return;
+        App.participationPending = true;
+        renderFeatured();
+        renderJoinedEvents();
+        fetchNui("toggleParticipation", { id: event.id });
+    }
+
+    function renderJoinedEvents() {
+        const list = $("joined-event-list");
+        list.innerHTML = "";
+        const items = [...App.events]
+            .filter(hasJoined)
+            .sort((a, b) => `${a.event_date} ${a.start_time || "00:00"}`.localeCompare(`${b.event_date} ${b.start_time || "00:00"}`));
+
+        if (!items.length) {
+            list.innerHTML =
+                '<div class="joined-empty">' +
+                '<span class="joined-empty-icon">✓</span>' +
+                '<h3>参加予定はありません</h3>' +
+                '<p>イベント画面から参加予約すると、ここに表示されます。</p>' +
+                '</div>';
+            return;
+        }
+
+        for (const event of items) {
+            const [year, month, day] = event.event_date.split("-").map(Number);
+            const weekday = ["日", "月", "火", "水", "木", "金", "土"][new Date(year, month - 1, day).getDay()];
+            const past = event.event_date < todayKey();
+            const card = document.createElement("article");
+            card.className = "joined-event-card" + (past ? " past" : "");
+            card.innerHTML =
+                `<div class="joined-event-date"><span>${year}</span><strong>${month}/${day}</strong><em>${weekday}</em></div>` +
+                `<div class="joined-event-content">` +
+                `<span class="joined-event-status">${past ? "開催済み" : "参加予定"}</span>` +
+                `<h3>${esc(event.title)}</h3>` +
+                `<p>${esc(timeLabel(event))}${event.location ? " ・ " + esc(event.location) : ""}</p>` +
+                `<small>${Number(event.participant_count) || 0}人が参加予定</small>` +
+                `</div>` +
+                `<button class="joined-cancel" type="button">予約取消</button>`;
+            card.addEventListener("click", () => openDetail(event));
+            const cancel = card.querySelector(".joined-cancel");
+            cancel.disabled = App.participationPending;
+            cancel.addEventListener("click", (clickEvent) => {
+                clickEvent.stopPropagation();
+                requestParticipation(event);
+            });
+            list.appendChild(card);
+        }
+    }
+
+    function showView(view) {
+        App.currentView = view;
+        const joined = view === "joined";
+        $("events-view").classList.toggle("active", !joined);
+        $("joined-view").classList.toggle("active", joined);
+        $("nav-events").classList.toggle("active", !joined);
+        $("nav-joined").classList.toggle("active", joined);
+        $("app-title").textContent = joined ? "参加予定" : "イベント";
+        if (joined) renderJoinedEvents();
+        $("app-content").scrollTop = 0;
     }
 
     function esc(s) {
@@ -191,6 +417,10 @@
         $("d-location").textContent = e.location ? `📍 ${e.location}` : "";
         $("d-location").style.display = e.location ? "" : "none";
         $("d-author").textContent = `👤 ${e.author}`;
+        const reminderAt = hasReminder(e) ? reminderInputValue(e.reminder_at) : "";
+        $("d-reminder").textContent = reminderAt ? `🔔 ${reminderAt.replace("T", " ")}` : "";
+        $("d-reminder").style.display = reminderAt ? "" : "none";
+
         $("d-desc").textContent = e.description || "";
         $("d-desc").style.display = e.description ? "" : "none";
         $("detail-edit").style.display = canManage(e) ? "" : "none";
@@ -207,6 +437,10 @@
         $("f-end").value = e ? e.end_time || "" : "";
         $("f-location").value = e ? e.location : "";
         $("f-desc").value = e ? e.description || "" : "";
+        $("f-reminder-enabled").checked = hasReminder(e);
+        $("f-reminder-at").value = e ? reminderInputValue(e.reminder_at) : "";
+        updateReminderFields();
+
         show("modal-form");
     }
 
@@ -229,6 +463,14 @@
             toast("タイトルと日付は必須です", false);
             return;
         }
+
+        const reminderEnabled = $("f-reminder-enabled").checked;
+        const reminderAt = $("f-reminder-at").value;
+        if (reminderEnabled && !reminderAt) {
+            toast("リマインド通知日時を入力してください", false);
+            return;
+        }
+
         const payload = {
             title,
             date,
@@ -236,6 +478,8 @@
             endTime: $("f-end").value || null,
             location: $("f-location").value.trim(),
             description: $("f-desc").value.trim(),
+            reminderEnabled,
+            reminderAt: reminderEnabled ? reminderAt : null,
         };
         if (App.editingId) {
             payload.id = App.editingId;
@@ -255,18 +499,28 @@
         $("prev-month").addEventListener("click", () => {
             App.month--;
             if (App.month < 0) { App.month = 11; App.year--; }
+            App.selected = dateKey(App.year, App.month, 1);
             renderCalendar();
+            renderDay();
         });
         $("next-month").addEventListener("click", () => {
             App.month++;
             if (App.month > 11) { App.month = 0; App.year++; }
+            App.selected = dateKey(App.year, App.month, 1);
             renderCalendar();
+            renderDay();
         });
         $("add-btn").addEventListener("click", () => openForm(null));
-        $("help-btn").addEventListener("click", () => show("modal-help"));
+        $("featured-action").addEventListener("click", () => requestParticipation(App.featuredEvent));
+        $("header-add").addEventListener("click", () => App.canAdd ? openForm(null) : toast("予定を追加する権限がありません", false));
+        $("nav-events").addEventListener("click", () => showView("events"));
+        $("nav-joined").addEventListener("click", () => showView("joined"));
+        $("nav-add").addEventListener("click", () => App.canAdd ? openForm(null) : toast("予定を追加する権限がありません", false));
+        $("nav-help").addEventListener("click", () => show("modal-help"));
         $("help-close").addEventListener("click", hideAll);
         $("form-cancel").addEventListener("click", hideAll);
         $("form-save").addEventListener("click", saveForm);
+        $("f-reminder-enabled").addEventListener("change", updateReminderFields);
         $("detail-close").addEventListener("click", hideAll);
         $("detail-edit").addEventListener("click", () => {
             hideAll();
@@ -284,6 +538,7 @@
 
         renderCalendar();
         renderDay();
+        renderJoinedEvents();
         fetchNui("getEvents");
     }
 
@@ -299,7 +554,11 @@
             $("add-btn").style.display = App.canAdd ? "" : "none";
             renderCalendar();
             renderDay();
+            renderJoinedEvents();
         } else if (e.data?.type === "result") {
+            App.participationPending = false;
+            renderFeatured();
+            renderJoinedEvents();
             toast(e.data.data.message, e.data.data.ok);
         }
     });

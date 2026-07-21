@@ -11,6 +11,80 @@ window.addEventListener('load', () => {
     document.getElementById('phone-wrapper').style.display = 'block';
     document.body.style.visibility = 'visible';
 
+    const localDate = (date) => {
+        const pad = (value) => String(value).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    };
+    const today = new Date();
+    const nextEventDate = new Date(today);
+    nextEventDate.setDate(today.getDate() + 5);
+    const mockEvents = [
+        {
+            id: 1,
+            citizenid: 'preview-user',
+            author: 'Felicity運営局',
+            title: '夏祭りナイト 2026',
+            event_date: localDate(today),
+            start_time: '20:00',
+            end_time: '23:00',
+            location: 'マーケット広場・ビーチエリア',
+            description: '屋台やゲームコーナー、ライブステージに加えて花火大会も開催します。みんなで最高の夏の思い出を作ろう！',
+            reminder_enabled: true,
+            reminder_at: `${localDate(today)} 19:30`,
+            participant_count: 128,
+            has_joined: 0,
+        },
+        {
+            id: 2,
+            citizenid: 'preview-user',
+            author: 'City Music Club',
+            title: 'サンセット・ライブ',
+            event_date: localDate(nextEventDate),
+            start_time: '18:30',
+            end_time: '20:00',
+            location: 'ビーチステージ',
+            description: '夕暮れの海辺で楽しむアコースティックライブです。',
+            reminder_enabled: false,
+            reminder_at: null,
+            participant_count: 34,
+            has_joined: 1,
+        },
+    ];
+
+    const sendMockEvents = () => window.postMessage({
+        type: 'events',
+        data: {
+            events: mockEvents,
+            citizenid: 'preview-user',
+            canAdd: true,
+            isAdmin: true,
+        },
+    });
+
+    window.fetchNui = window.fetchNui || ((eventName, data) => {
+        if (eventName === 'getEvents') {
+            window.setTimeout(sendMockEvents, 0);
+        } else if (eventName === 'toggleParticipation') {
+            const event = mockEvents.find((item) => item.id === Number(data?.id));
+            if (event) {
+                const joined = event.has_joined === true || Number(event.has_joined) === 1;
+                event.has_joined = joined ? 0 : 1;
+                event.participant_count = Math.max(0, Number(event.participant_count) + (joined ? -1 : 1));
+                window.setTimeout(() => {
+                    window.postMessage({
+                        type: 'result',
+                        data: {
+                            ok: true,
+                            message: joined ? '参加予約を取り消しました' : '参加予約が完了しました',
+                        },
+                    });
+                    sendMockEvents();
+                }, 180);
+            }
+        }
+        return Promise.resolve({});
+    });
+
     // Create the Frame element
     const createFrame = (children) => {
         const frame = document.createElement('div');
@@ -60,8 +134,8 @@ window.addEventListener('load', () => {
     phoneWrapper.parentNode.insertBefore(devWrapper, phoneWrapper);
     phoneWrapper.parentNode.removeChild(phoneWrapper);
 
-    const center = () => (document.getElementById('phone-wrapper').style.scale = window.innerWidth / 1920);
-    center();
-
-    window.addEventListener('resize', center);
+    window.postMessage('componentsLoaded');
+    if (new URLSearchParams(window.location.search).get('view') === 'joined') {
+        window.setTimeout(() => document.getElementById('nav-joined')?.click(), 80);
+    }
 });
